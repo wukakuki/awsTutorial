@@ -1,0 +1,15 @@
+[Unit]
+Description=Violet lightweight STUN/TURN server
+Requires=network.target
+After=network-online.target
+Before=shutdown.target reboot.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=3
+ExecStart=/local/game/EmbeddedVoiceChatServer -f /local/game/EmbeddedVoiceChatServer.conf
+
+
+[Install]
+WantedBy=multi-user.target
