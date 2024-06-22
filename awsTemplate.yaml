@@ -1,11 +1,37 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Description: awsTutorial(2, Cognito Basic)
+Parameters:
+  ResourceNamePrefix:
+    Description: Prefix of resource name
+    Default: awsTutorial
+    Type: String
+  GameServerBuildBucket:
+    Description: S3 bucket for storing game server build files.
+    Type: String
+  GameServerBuildKey:
+    Description: The key of the game server build file.
+    Type: String
+  GameServerBuildObjectVersion:
+    Description: The version of the game server build file.
+    Type: String
+  GameServerBuildServerSdkVersion:
+    Description: The server sdk version of the game server build file.
+    Type: String
+  GameServerBuildVersion:
+    Description: Version of the game server build.
+    Type: String
+  GameServerLaunchPath:
+    Description: The launch path of the game server.
+    Type: String
 Resources:
   awsTutorialCognitoAuthRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: awsTutorial_Cognito_Auth_Role
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_Auth_Role
       Description: Role for AWS Cognito Identity Auth
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -22,7 +48,10 @@ Resources:
               ForAnyValue:StringLike:
                 cognito-identity.amazonaws.com:amr: authenticated
       Policies:
-        - PolicyName: awsTutorial_Cognito_Auth_Policy
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _Cognito_Auth_Policy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -32,20 +61,17 @@ Resources:
                   - gamelift:SearchGameSessions
                   - gamelift:CreateGameSession
                   - gamelift:CreatePlayerSession
-                Resource: !Join
-                  - ''
-                  - - 'arn:aws:gamelift:'
-                    - !Ref AWS::Region
-                    - ':'
-                    - ':alias/'
-                    - '*'
+                Resource: '*'
       Tags:
         - Key: Usage
           Value: Youtube Streamer
   awsTutorialCognitoUnauthRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: awsTutorial_Cognito_Unauth_Role
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_Unauth_Role
       Description: Role for AWS Cognito Identity Unauth
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -62,7 +88,10 @@ Resources:
               ForAnyValue:StringLike:
                 cognito-identity.amazonaws.com:amr: unauthenticated
       Policies:
-        - PolicyName: awsTutorial_Cognito_Unauth_Policy
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _Cognito_Unauth_Policy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -76,7 +105,10 @@ Resources:
   awsTutorialCognitoIdentityPool:
     Type: AWS::Cognito::IdentityPool
     Properties:
-      IdentityPoolName: awsTutorial_Cognito_Identity_Pool
+      IdentityPoolName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_Identity_Pool
       AllowUnauthenticatedIdentities: true
       CognitoIdentityProviders:
         - ClientId: !Ref awsTutorialCognitoUserPoolClient
@@ -92,7 +124,10 @@ Resources:
   awsTutorialCognitoUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: awsTutorial_Cognito_User_Pool
+      UserPoolName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_User_Pool
       AccountRecoverySetting:
         RecoveryMechanisms:
           - Name: verified_email
@@ -129,8 +164,17 @@ Resources:
   awsTutorialCognitoUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
-      ClientName: awsTutorial_Cognito_User_Pool_Client
+      ClientName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_User_Pool_Client
       AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
       AllowedOAuthFlows:
         - client_credentials
       AllowedOAuthFlowsUserPoolClient: false
@@ -141,16 +185,106 @@ Resources:
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
       GenerateSecret: true
-      IdTokenValidity: 60
       PreventUserExistenceErrors: ENABLED
-      RefreshTokenValidity: 30
       SupportedIdentityProviders:
         - COGNITO
-      TokenValidityUnits:
-        AccessToken: minutes
-        IdToken: minutes
-        RefreshToken: days
       UserPoolId: !Ref awsTutorialCognitoUserPool
+  awsTutorialGameLiftRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _GameLift_Role
+      Description: Role for AWS GameLift service
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - gamelift.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _GameLift_Policy
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Effect: Allow
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref GameServerBuildBucket
+                    - /*
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialBuild:
+    Type: AWS::GameLift::Build
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Build
+      OperatingSystem: AMAZON_LINUX_2
+      ServerSdkVersion: !Ref GameServerBuildServerSdkVersion
+      StorageLocation:
+        Bucket: !Ref GameServerBuildBucket
+        Key: !Ref GameServerBuildKey
+        ObjectVersion: !Ref GameServerBuildObjectVersion
+        RoleArn: !GetAtt awsTutorialGameLiftRole.Arn
+      Version: !Ref GameServerBuildVersion
+  awsTutorialFleet:
+    Type: AWS::GameLift::Fleet
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Fleet
+      Description: awsTutorial Fleet
+      BuildId: !Ref awsTutorialBuild
+      CertificateConfiguration:
+        CertificateType: GENERATED
+      ComputeType: EC2
+      DesiredEC2Instances: 1
+      EC2InboundPermissions:
+        - FromPort: 7777
+          ToPort: 7777
+          IpRange: 0.0.0.0/0
+          Protocol: UDP
+      EC2InstanceType: c6g.medium
+      FleetType: SPOT
+      MaxSize: 1
+      MinSize: 0
+      NewGameSessionProtectionPolicy: NoProtection
+      ResourceCreationLimitPolicy:
+        NewGameSessionsPerCreator: 1
+        PolicyPeriodInMinutes: 3
+      RuntimeConfiguration:
+        GameSessionActivationTimeoutSeconds: 300
+        MaxConcurrentGameSessionActivations: 1
+        ServerProcesses:
+          - ConcurrentExecutions: 1
+            LaunchPath: !Join
+              - ''
+              - - /local/game/
+                - !Ref GameServerLaunchPath
+  awsTutorialAlias:
+    Type: AWS::GameLift::Alias
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Alias
+      Description: awsTutorial Alias
+      RoutingStrategy:
+        FleetId: !Ref awsTutorialFleet
+        Type: SIMPLE
 Metadata:
   AWS::Composer::Groups:
     Group:
@@ -159,6 +293,12 @@ Metadata:
         - awsTutorialCognitoIdentityPool
         - awsTutorialCognitoUserPool
         - awsTutorialCognitoUserPoolClient
+    Group2:
+      Label: GameLift
+      Members:
+        - awsTutorialGameLiftRole
+        - awsTutorialFleet
+        - awsTutorialAlias
 Outputs:
   awsTutorialRegion:
     Description: AWS Region
@@ -172,3 +312,6 @@ Outputs:
   awsTutorialCognitoUserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !Ref awsTutorialCognitoUserPoolClient
+  awsTutorialAliasId:
+    Description: GameLift Alias ID
+    Value: !Ref awsTutorialAlias
