@@ -142,7 +142,9 @@ Resources:
       DeletionProtection: INACTIVE
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
-      MfaConfiguration: 'OFF'
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      MfaConfiguration: OPTIONAL
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -188,6 +190,13 @@ Resources:
       PreventUserExistenceErrors: ENABLED
       SupportedIdentityProviders:
         - COGNITO
+      ReadAttributes:
+        - preferred_username
+        - email
+        - email_verified
+      WriteAttributes:
+        - email
+        - preferred_username
       UserPoolId: !Ref awsTutorialCognitoUserPool
   awsTutorialGameLiftRole:
     Type: AWS::IAM::Role
