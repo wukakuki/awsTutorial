@@ -198,102 +198,102 @@ Resources:
         - email
         - preferred_username
       UserPoolId: !Ref awsTutorialCognitoUserPool
-  # awsTutorialGameLiftRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     RoleName: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _GameLift_Role
-  #     Description: Role for AWS GameLift service
-  #     AssumeRolePolicyDocument:
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - gamelift.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Policies:
-  #       - PolicyName: !Join
-  #           - ''
-  #           - - !Ref ResourceNamePrefix
-  #             - _GameLift_Policy
-  #         PolicyDocument:
-  #           Statement:
-  #             - Action:
-  #                 - s3:GetObject
-  #                 - s3:GetObjectVersion
-  #               Effect: Allow
-  #               Resource: !Join
-  #                 - ''
-  #                 - - 'arn:aws:s3:::'
-  #                   - !Ref GameServerBuildBucket
-  #                   - /*
-  #     Tags:
-  #       - Key: Usage
-  #         Value: Youtube Streamer
-  # awsTutorialBuild:
-  #   Type: AWS::GameLift::Build
-  #   Properties:
-  #     Name: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _Build
-  #     OperatingSystem: AMAZON_LINUX_2
-  #     ServerSdkVersion: !Ref GameServerBuildServerSdkVersion
-  #     StorageLocation:
-  #       Bucket: !Ref GameServerBuildBucket
-  #       Key: !Ref GameServerBuildKey
-  #       ObjectVersion: !Ref GameServerBuildObjectVersion
-  #       RoleArn: !GetAtt awsTutorialGameLiftRole.Arn
-  #     Version: !Ref GameServerBuildVersion
-  # awsTutorialFleet:
-  #   Type: AWS::GameLift::Fleet
-  #   Properties:
-  #     Name: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _Fleet
-  #     Description: awsTutorial Fleet
-  #     BuildId: !Ref awsTutorialBuild
-  #     CertificateConfiguration:
-  #       CertificateType: GENERATED
-  #     ComputeType: EC2
-  #     DesiredEC2Instances: 1
-  #     EC2InboundPermissions:
-  #       - FromPort: 7777
-  #         ToPort: 7777
-  #         IpRange: 0.0.0.0/0
-  #         Protocol: UDP
-  #     EC2InstanceType: c6g.medium
-  #     FleetType: SPOT
-  #     MaxSize: 1
-  #     MinSize: 0
-  #     NewGameSessionProtectionPolicy: NoProtection
-  #     ResourceCreationLimitPolicy:
-  #       NewGameSessionsPerCreator: 1
-  #       PolicyPeriodInMinutes: 3
-  #     RuntimeConfiguration:
-  #       GameSessionActivationTimeoutSeconds: 300
-  #       MaxConcurrentGameSessionActivations: 1
-  #       ServerProcesses:
-  #         - ConcurrentExecutions: 1
-  #           LaunchPath: !Join
-  #             - ''
-  #             - - /local/game/
-  #               - !Ref GameServerLaunchPath
-  # awsTutorialAlias:
-  #   Type: AWS::GameLift::Alias
-  #   Properties:
-  #     Name: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _Alias
-  #     Description: awsTutorial Alias
-  #     RoutingStrategy:
-  #       FleetId: !Ref awsTutorialFleet
-  #       Type: SIMPLE
+  awsTutorialGameLiftRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _GameLift_Role
+      Description: Role for AWS GameLift service
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - gamelift.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _GameLift_Policy
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Effect: Allow
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref GameServerBuildBucket
+                    - /*
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialBuild:
+    Type: AWS::GameLift::Build
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Build
+      OperatingSystem: AMAZON_LINUX_2
+      ServerSdkVersion: !Ref GameServerBuildServerSdkVersion
+      StorageLocation:
+        Bucket: !Ref GameServerBuildBucket
+        Key: !Ref GameServerBuildKey
+        ObjectVersion: !Ref GameServerBuildObjectVersion
+        RoleArn: !GetAtt awsTutorialGameLiftRole.Arn
+      Version: !Ref GameServerBuildVersion
+  awsTutorialFleet:
+    Type: AWS::GameLift::Fleet
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Fleet
+      Description: awsTutorial Fleet
+      BuildId: !Ref awsTutorialBuild
+      CertificateConfiguration:
+        CertificateType: GENERATED
+      ComputeType: EC2
+      DesiredEC2Instances: 1
+      EC2InboundPermissions:
+        - FromPort: 7777
+          ToPort: 7777
+          IpRange: 0.0.0.0/0
+          Protocol: UDP
+      EC2InstanceType: c6g.medium
+      FleetType: SPOT
+      MaxSize: 1
+      MinSize: 0
+      NewGameSessionProtectionPolicy: NoProtection
+      ResourceCreationLimitPolicy:
+        NewGameSessionsPerCreator: 1
+        PolicyPeriodInMinutes: 3
+      RuntimeConfiguration:
+        GameSessionActivationTimeoutSeconds: 300
+        MaxConcurrentGameSessionActivations: 1
+        ServerProcesses:
+          - ConcurrentExecutions: 1
+            LaunchPath: !Join
+              - ''
+              - - /local/game/
+                - !Ref GameServerLaunchPath
+  awsTutorialAlias:
+    Type: AWS::GameLift::Alias
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Alias
+      Description: awsTutorial Alias
+      RoutingStrategy:
+        FleetId: !Ref awsTutorialFleet
+        Type: SIMPLE
 Metadata:
   AWS::Composer::Groups:
     Group:
@@ -302,12 +302,12 @@ Metadata:
         - awsTutorialCognitoIdentityPool
         - awsTutorialCognitoUserPool
         - awsTutorialCognitoUserPoolClient
-    # Group2:
-    #   Label: GameLift
-    #   Members: 
-    #     - awsTutorialGameLiftRole
-    #     - awsTutorialFleet
-    #     - awsTutorialAlias
+    Group2:
+      Label: GameLift
+      Members:
+        - awsTutorialGameLiftRole
+        - awsTutorialFleet
+        - awsTutorialAlias
 Outputs:
   awsTutorialRegion:
     Description: AWS Region
@@ -321,6 +321,6 @@ Outputs:
   awsTutorialCognitoUserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !Ref awsTutorialCognitoUserPoolClient
-  # awsTutorialAliasId:
-  #   Description: GameLift Alias ID
-  #   Value: !Ref awsTutorialAlias
+  awsTutorialAliasId:
+    Description: GameLift Alias ID
+    Value: !Ref awsTutorialAlias
