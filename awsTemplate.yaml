@@ -25,6 +25,18 @@ Parameters:
     Description: The launch path of the game server.
     Type: String
 Resources:
+  awsTutorialLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _UserLogs
+      LogGroupClass: INFREQUENT_ACCESS
+      RetentionInDays: 7
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
   awsTutorialUserGeneratedContentS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -34,6 +46,100 @@ Resources:
           - '-user-generated-content-bucket'
       VersioningConfiguration:
         Status: Enabled
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialCognitoAuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_Auth_Role
+      Description: Role for AWS Cognito Identity Auth
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+              - sts:TagSession
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref awsTutorialCognitoIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: authenticated
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _Cognito_Auth_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: GameLiftBasic
+                Effect: Allow
+                Action:
+                  - gamelift:SearchGameSessions
+                  - gamelift:CreateGameSession
+                  - gamelift:CreatePlayerSession
+                Resource: '*'
+              - Sid: UserGeneratedContent
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:PutObjectTagging
+                Resource: !Join
+                  - ''
+                  - - !GetAtt awsTutorialUserGeneratedContentS3Bucket.Arn
+                    - /${cognito-identity.amazonaws.com:sub}/*
+              - Sid: UserLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt awsTutorialLogGroup.Arn
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialCognitoUnauthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_Unauth_Role
+      Description: Role for AWS Cognito Identity Unauth
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+              - sts:TagSession
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref awsTutorialCognitoIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: unauthenticated
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _Cognito_Unauth_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: DenyAll
+                Effect: Deny
+                Action: '*'
+                Resource: '*'
       Tags:
         - Key: Usage
           Value: Youtube Streamer
@@ -89,94 +195,6 @@ Resources:
               - ''
               - - !GetAtt awsTutorialUserGeneratedContentS3Bucket.Arn
                 - /${cognito-identity.amazonaws.com:sub}/*
-  awsTutorialCognitoAuthRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join
-        - ''
-        - - !Ref ResourceNamePrefix
-          - _Cognito_Auth_Role
-      Description: Role for AWS Cognito Identity Auth
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Federated: cognito-identity.amazonaws.com
-            Action:
-              - sts:AssumeRoleWithWebIdentity
-              - sts:TagSession
-            Condition:
-              StringEquals:
-                cognito-identity.amazonaws.com:aud: !Ref awsTutorialCognitoIdentityPool
-              ForAnyValue:StringLike:
-                cognito-identity.amazonaws.com:amr: authenticated
-      Policies:
-        - PolicyName: !Join
-            - ''
-            - - !Ref ResourceNamePrefix
-              - _Cognito_Auth_Policy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: GameLiftBasic
-                Effect: Allow
-                Action:
-                  - gamelift:SearchGameSessions
-                  - gamelift:CreateGameSession
-                  - gamelift:CreatePlayerSession
-                Resource: '*'
-              - Sid: UserGeneratedContent
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:GetObjectVersion
-                  - s3:PutObject
-                  - s3:PutObjectTagging
-                Resource: !Join
-                  - ''
-                  - - !GetAtt awsTutorialUserGeneratedContentS3Bucket.Arn
-                    - /${cognito-identity.amazonaws.com:sub}/*
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
-  awsTutorialCognitoUnauthRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join
-        - ''
-        - - !Ref ResourceNamePrefix
-          - _Cognito_Unauth_Role
-      Description: Role for AWS Cognito Identity Unauth
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Federated: cognito-identity.amazonaws.com
-            Action:
-              - sts:AssumeRoleWithWebIdentity
-              - sts:TagSession
-            Condition:
-              StringEquals:
-                cognito-identity.amazonaws.com:aud: !Ref awsTutorialCognitoIdentityPool
-              ForAnyValue:StringLike:
-                cognito-identity.amazonaws.com:amr: unauthenticated
-      Policies:
-        - PolicyName: !Join
-            - ''
-            - - !Ref ResourceNamePrefix
-              - _Cognito_Unauth_Policy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: DenyAll
-                Effect: Deny
-                Action: '*'
-                Resource: '*'
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
   awsTutorialCognitoIdentityPool:
     Type: AWS::Cognito::IdentityPool
     Properties:
@@ -394,6 +412,10 @@ Metadata:
       Label: User Generated Content
       Members:
         - awsTutorialUserGeneratedContentS3Bucket
+    Group4:
+      Label: Logs
+      Members:
+        - awsTutorialLogGroup
 Outputs:
   awsTutorialRegion:
     Description: AWS Region
@@ -413,3 +435,6 @@ Outputs:
   awsTutorialUserGeneratedContentS3Bucket:
     Description: User Generated Content S3 Bucket
     Value: !Ref awsTutorialUserGeneratedContentS3Bucket
+  awsTutorialLogGroupName:
+    Description: Log Group Name
+    Value: !Ref awsTutorialLogGroup
