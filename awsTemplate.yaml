@@ -102,7 +102,15 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !GetAtt awsTutorialLogGroup.Arn
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:logs:'
+                    - !Ref AWS::Region
+                    - ':'
+                    - !Ref AWS::AccountId
+                    - ':log-group:'
+                    - !Ref awsTutorialLogGroup
+                    - ':log-stream:*'
       Tags:
         - Key: Usage
           Value: Youtube Streamer
@@ -394,6 +402,235 @@ Resources:
       RoutingStrategy:
         FleetId: !Ref awsTutorialFleet
         Type: SIMPLE
+  awsTutorialSearchUsersLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _SearchUsers_Lambda_Function_Role
+      Description: Role for AWS Lambda Functions Cognito User Pool
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _SearchUsers_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: SearchUsersPolicy
+                Effect: Allow
+                Action:
+                  - cognito-idp:ListUsers
+                Resource:
+                  - !GetAtt awsTutorialCognitoUserPool.Arn
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialSearchUsersLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _SearchUsers_Lambda
+      Description: Lambda function Search Users for Cognito user pool
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+          def lambda_handler(event, context):
+              UserPool = os.environ['User_Pool']
+              cognito_idp = boto3.client('cognito-idp')
+              request_parameters = {
+                'UserPoolId': UserPool,
+                'Limit': 20
+              }
+              if event['hint']:
+                filter_expression = f"username ^= '{event['hint']}' OR preferred_username ^= '{event['hint']}' OR email ^= '{event['hint']}'"
+                request_parameters['Filter'] = filter_expression
+              if event['nextToken']:
+                request_parameters['PaginationToken'] = event['nextToken']
+              try:
+                response = cognito_idp.list_users(**request_parameters)
+                output = {
+                  'users': [user['Username'] for user in response['Users']],
+                }
+                if 'PaginationToken' in response:
+                  output['nextToken'] = response['PaginationToken']
+                return output
+              except Exception as e:
+                raise Exception(f"Error processing request: {str(e)}")
+      Environment:
+        Variables:
+          User_Pool: !Ref awsTutorialCognitoUserPool
+      Handler: index.lambda_handler
+      MemorySize: 256
+      Role: !GetAtt awsTutorialSearchUsersLambdaRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialFriendListDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Join
+        - !Ref ResourceNamePrefix
+          - _FriendList_DynamoDB_Table
+      AttributeDefinitions:
+        - AttributeName: toUser
+          AttributeType: S
+        - AttributeName: fromUser
+          AttributeType: S
+        - AttributeName: friendStatus
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: false
+      OnDemandThroughput:
+        MaxReadRequestUnits: 1
+        MaxWriteRequestUnits: 1
+      TableClass: STANDARD
+      KeySchema:
+        - AttributeName: toUser
+          KeyType: HASH
+        - AttributeName: fromUser
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: byFromUser
+          KeySchema:
+            - AttributeName: fromUser
+              KeyType: HASH
+            - AttributeName: friendStatus
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          OnDemandThroughput:
+            MaxReadRequestUnits: 1
+            MaxWriteRequestUnits: 1
+        - IndexName: byToUser
+          KeySchema:
+            - AttributeName: toUser
+              KeyType: HASH
+            - AttributeName: friendStatus
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          OnDemandThroughput:
+            MaxReadRequestUnits: 1
+            MaxWriteRequestUnits: 1
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+# add DAX if you want but it will charge you per hours. Only add it when you are at the corner of releasing your game.
+  awsTutorialFriendListLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _FriendList_Lambda_Function_Role
+      Description: Role for AWS Lambda Functions Friend List Table
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _FriendList_Lambda_Function_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: FriendListLambdaFunctionPolicy
+                Effect: Allow
+                Action:
+                  - dynamodb:PartiQLSelect
+                Resource:
+                  - !GetAtt awsTutorialFriendListDynamoDBTable.Arn
+                  - !Join
+                    - ''
+                    - - !GetAtt awsTutorialFriendListDynamoDBTable.Arn
+                      - /*
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialGetFriendStatusLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _GetFriendStatus_Lambda
+      Description: Lambda function List Pending Friend Requests for FriendList table
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+          def lambda_handler(event, context):
+              friendListTableName = os.environ['TABLE_NAME']
+              dynamodb = boto3.client('dynamodb')
+              statement = 'select * from {0} where (ToUser = ? and FromUser = ?) or (ToUser = ? and FromUser = ?)'.format(friendListTableName)
+              request_parameters = {
+                'Statement': statement,
+                'Parameters': [{
+                  "S": event['username'],
+                },{
+                  "S": event['user'],
+                },{
+                  "S": event['user'],
+                },{
+                  "S": event['username'],
+                }],
+                'Limit': 20
+              }
+              try:
+                response = dynamodb.execute_statement(**request_parameters)
+                if response['Items']:
+                  output = {
+                    'toUser': response['Items'][0]['toUser']['S'],
+                    'fromUser': response['Items'][0]['fromUser']['S'],
+                    'friendStatus': response['Items'][0]['friendStatus']['S'],
+                    'createdAt': response['Items'][0]['createdAt']['N'],
+                    'updatedAt': response['Items'][0]['updatedAt']['N'],
+                  }
+                else:
+                  output = {
+                    'toUser': event['user'],
+                    'fromUser': event['username'],
+                    'friendStatus': 'none or rejected',
+                  }
+                return output
+              except Exception as e:
+                raise Exception(f"Error processing request: {str(e)}")
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref awsTutorialFriendListDynamoDBTable
+      Handler: index.lambda_handler
+      MemorySize: 256
+      Role: !GetAtt awsTutorialFriendListLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
 Metadata:
   AWS::Composer::Groups:
     Group:
