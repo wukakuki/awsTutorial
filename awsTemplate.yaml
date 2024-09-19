@@ -715,36 +715,54 @@ Resources:
           def lambda_handler(event, context):
               friendListTableName = os.environ['TABLE_NAME']
               dynamodb = boto3.client('dynamodb')
-              statement = 'select * from {0} where (ToUser = ? and FromUser = ?) or (ToUser = ? and FromUser = ?)'.format(friendListTableName)
-              request_parameters = {
-                'Statement': statement,
-                'Parameters': [{
-                  "S": event['username'],
-                },{
-                  "S": event['user'],
-                },{
-                  "S": event['user'],
-                },{
-                  "S": event['username'],
-                }],
-                'Limit': 20
-              }
               try:
+                statement = 'select * from {0} where (toUser = ? and fromUser = ?)'.format(friendListTableName)
+                request_parameters = {
+                  'Statement': statement,
+                  'Parameters': [{
+                    "S": event['username'],
+                  },{
+                    "S": event['user'],
+                  }],
+                  'Limit': 20
+                }
                 response = dynamodb.execute_statement(**request_parameters)
                 if response['Items']:
                   output = {
                     'toUser': response['Items'][0]['toUser']['S'],
                     'fromUser': response['Items'][0]['fromUser']['S'],
-                    'friendStatus': response['Items'][0]['friendStatus']['S'],
-                    'createdAt': response['Items'][0]['createdAt']['N'],
-                    'updatedAt': response['Items'][0]['updatedAt']['N'],
+                    'friendStatus': response['Items'][0]['friendStatus'].get('S', 'none or rejected'),
+                    'createdAt': int(response['Items'][0]['createdAt'].get('N', 0)),
+                    'updatedAt': int(response['Items'][0]['updatedAt'].get('N', 0)),
                   }
-                else:
+                  return output
+          
+                statement = 'select * from {0} where (toUser = ? and fromUser = ?)'.format(friendListTableName)
+                request_parameters = {
+                  'Statement': statement,
+                  'Parameters': [{
+                    "S": event['user'],
+                  },{
+                    "S": event['username'],
+                  }],
+                  'Limit': 20
+                }
+                response = dynamodb.execute_statement(**request_parameters)
+                if response['Items']:
                   output = {
-                    'toUser': event['user'],
-                    'fromUser': event['username'],
-                    'friendStatus': 'none or rejected',
+                    'toUser': response['Items'][0]['toUser']['S'],
+                    'fromUser': response['Items'][0]['fromUser']['S'],
+                    'friendStatus': response['Items'][0]['friendStatus'].get('S', 'none or rejected'),
+                    'createdAt': int(response['Items'][0]['createdAt'].get('N', 0)),
+                    'updatedAt': int(response['Items'][0]['updatedAt'].get('N', 0)),
                   }
+                  return output
+          
+                output = {
+                  'toUser': event['user'],
+                  'fromUser': event['username'],
+                  'friendStatus': 'none or rejected',
+                }
                 return output
               except Exception as e:
                 raise Exception(f"Error processing request: {str(e)}")
@@ -795,8 +813,8 @@ Resources:
                     'toUser': user['toUser']['S'],
                     'fromUser': user['fromUser']['S'],
                     'friendStatus': user['friendStatus']['S'],
-                    'createdAt': user['createdAt']['N'],
-                    'updatedAt': user['updatedAt']['N'],
+                    'createdAt': int(user['createdAt'].get('N', 0)),
+                    'updatedAt': int(user['updatedAt'].get('N', 0)),
                   } for user in response['Items']],
                   'nextToken': response.get('NextToken', None),
                 }
@@ -850,8 +868,8 @@ Resources:
                     'toUser': user['toUser']['S'],
                     'fromUser': user['fromUser']['S'],
                     'friendStatus': user['friendStatus']['S'],
-                    'createdAt': user['createdAt']['N'],
-                    'updatedAt': user['updatedAt']['N'],
+                    'createdAt': int(user['createdAt'].get('N', 0)),
+                    'updatedAt': int(user['updatedAt'].get('N', 0)),
                   } for user in response['Items']],
                   'nextToken': response.get('NextToken', None),
                 }
@@ -1325,7 +1343,7 @@ Resources:
           "version": "2017-02-28",
           "operation": "Invoke",
           "payload": {
-            "username": $ctx.args.username
+            "username": "${ctx.args.username}"
           }
         }
       ResponseMappingTemplate: |
@@ -1381,8 +1399,8 @@ Resources:
           "version": "2017-02-28",
           "operation": "Invoke",
           "payload": {
-            "username": "$identityValue",
-            "nextToken": "$ctx.args.nextToken"
+            "username": "${identityValue}",
+            "nextToken": "${ctx.args.nextToken}"
           }
         }
       ResponseMappingTemplate: |
@@ -1438,8 +1456,8 @@ Resources:
           "version": "2017-02-28",
           "operation": "Invoke",
           "payload": {
-            "username": "$identityValue",
-            "nextToken": "$ctx.args.nextToken"
+            "username": "${identityValue}",
+            "nextToken": "${ctx.args.nextToken}"
           }
         }
       ResponseMappingTemplate: |
@@ -1465,8 +1483,8 @@ Resources:
           "version": "2017-02-28",
           "operation": "Invoke",
           "payload": {
-            "hint": "$ctx.args.hint",
-            "nextToken": "$ctx.args.nextToken"
+            "hint": "$ctx.args.toUser",
+            "nextToken": ""
           }
         }
       ResponseMappingTemplate: |
@@ -1476,14 +1494,15 @@ Resources:
         #else
           #if($util.isNull($ctx.result.users))
             #set($result = { "count": 0 })
+            $util.error("can't get previous result. please contact dev. ", "InternalError")
           #else
             #if( $ctx.result.users.size() == 0 )
               $util.error("Hm, didn't work. Please double check the username is correct. ", "NotExists")
             #end
             #if( $ctx.result.users.size() > 1 )
-              $util.error("more than one username found with ${ctx.args.hint}, please contact dev. ", "InternalError")
+              $util.error("more than one username found with ${ctx.args.toUser}, please contact dev. ", "InternalError")
             #end
-            #set($user = $ctx.prev.result.users[0])
+            #set($ctx.stash.user = $ctx.result.users[0])
             #set($result = { 
               "count": $ctx.result.users.size(),
               "users": $ctx.result.users,
@@ -1504,15 +1523,15 @@ Resources:
       Description: Get Friend Status
       FunctionVersion: '2018-05-29'
       RequestMappingTemplate: |
-        #if( $util.isNull($user) )
+        #if( $util.isNull($ctx.stash.user) )
           $util.error("not user requested. ", "InternalError")
         #end
         {
           "version": "2017-02-28",
           "operation": "Invoke",
           "payload": {
-            "username": "$identityValue",
-            "user": "$user.Username"
+            "username": "$ctx.stash.identityValue",
+            "user": "$ctx.stash.user.Username"
           }
         }
       ResponseMappingTemplate: |
@@ -1529,7 +1548,7 @@ Resources:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - _Create_Profile_Function
+          - _Create_Friend_Function
       ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialFriendListDataSource.Name
       Description: Create friend request
@@ -1545,13 +1564,13 @@ Resources:
           "version": "2017-02-28",
           "operation": "PutItem",
           "key": {
-            "toUser": $util.dynamodb.toDynamoDBJson($user['Username']),
-            "fromUser": $util.dynamodb.toDynamoDBJson($identityValue)
+            "toUser": $util.dynamodb.toDynamoDBJson($ctx.stash.user['Username']),
+            "fromUser": $util.dynamodb.toDynamoDBJson($ctx.stash.identityValue)
           },
           "attributeValues": {
             "friendStatus": $util.dynamodb.toDynamoDBJson("sent"),
-            "createdAt": $util.dynamodb.toDynamoDBJson($createAt),
-            "updatedAt": $util.dynamodb.toDynamoDBJson($updatedAt)
+            "createdAt": $util.dynamodb.toDynamoDBJson($ctx.args.createdAt),
+            "updatedAt": $util.dynamodb.toDynamoDBJson($ctx.args.updatedAt)
           },
           "condition": {
             "expression": "attribute_not_exists(toUser) OR attribute_not_exists(fromUser)",
@@ -1576,7 +1595,7 @@ Resources:
           - !GetAtt awsTutorialGraphQLMutationCreateFriendRequestFunction.FunctionId
       RequestMappingTemplate: |
         ## [Start] Set default values. **
-        #set( $createAt = $util.time.nowEpochSeconds() )
+        #set( $createdAt = $util.time.nowEpochSeconds() )
         #set( $updatedAt = $util.time.nowEpochSeconds() )
         ## Automatically set the createdAt timestamp. **
         ## [End] Set default values. **
@@ -1612,8 +1631,12 @@ Resources:
         #else
           $util.unauthorized()
         #end
+        #set($ctx.stash.identityValue = $identityValue)
         ## [End] Check authMode and execute owner/group checks **
-        $util.qr($ctx.args.put("createdAt", $createAt))
+        #if( $identityValue == $ctx.args.toUser )
+          $util.error("You are sending friend request to yourself", "InvalidParameter")
+        #end
+        $util.qr($ctx.args.put("createdAt", $createdAt))
         $util.qr($ctx.args.put("updatedAt", $updatedAt))
         {}
       ResponseMappingTemplate: |
@@ -1666,6 +1689,9 @@ Resources:
           $util.unauthorized()
         #end
         ## [End] Check authMode and execute owner/group checks **
+        #if( $identityValue == $ctx.args.fromUser )
+          $util.error("You are accepting a friend request to yourself", "InvalidParameter")
+        #end
         ## @TODO: make sure the friend request exists and the status is sent.
         {
           "version": "2017-02-28",
@@ -1739,6 +1765,9 @@ Resources:
           $util.unauthorized()
         #end
         ## [End] Check authMode and execute owner/group checks **
+        #if( $identityValue == $ctx.args.fromUser )
+          $util.error("You are rejecting a friend request to yourself", "InvalidParameter")
+        #end
         ## @TODO: make sure the friend request exists and the status is sent.
         {
           "version": "2017-02-28",
@@ -1764,14 +1793,14 @@ Resources:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - _Create_Profile_Function
+          - _Delete_Friend_Function
       ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialFriendListDataSource.Name
-      Description: Create friend request
+      Description: Delete friend request
       FunctionVersion: '2018-05-29'
       RequestMappingTemplate: |
-        #if( $ctx.prev.result.friendStatus != 'accepted' )
-          $util.error("You're not a friend with that user. ", "NotExists")
+        #if( $ctx.prev.result.friendStatus == 'none or rejected' )
+          $util.error("You're not a friend or pending friend with that user. ", "NotExists")
         #end
         {
           "version": "2017-02-28",
@@ -1781,7 +1810,7 @@ Resources:
             "fromUser": $util.dynamodb.toDynamoDBJson($ctx.prev.result.fromUser)
           },
           "condition": {
-            "expression": "attribute_not_exists(toUser) OR attribute_not_exists(fromUser)",
+            "expression": "attribute_exists(toUser) OR attribute_exists(fromUser)",
           }
         }
       ResponseMappingTemplate: |
@@ -1802,7 +1831,7 @@ Resources:
           - !GetAtt awsTutorialGraphQLMutationDeleteFriendRequestFunction.FunctionId
       RequestMappingTemplate: |
         ## [Start] Set default values. **
-        #set( $createAt = $util.time.nowEpochSeconds() )
+        #set( $createdAt = $util.time.nowEpochSeconds() )
         #set( $updatedAt = $util.time.nowEpochSeconds() )
         ## Automatically set the createdAt timestamp. **
         ## [End] Set default values. **
@@ -1838,10 +1867,14 @@ Resources:
         #else
           $util.unauthorized()
         #end
+        #set($ctx.stash.identityValue = $identityValue)
         ## [End] Check authMode and execute owner/group checks **
-        $util.qr($ctx.args.put("createdAt", $createAt))
+        #if( $identityValue == $ctx.args.toUser )
+          $util.error("You are deleting a friend request to yourself", "InvalidParameter")
+        #end
+        $util.qr($ctx.args.put("createdAt", $createdAt))
         $util.qr($ctx.args.put("updatedAt", $updatedAt))
-        #set($user = {
+        #set($ctx.stash.user = {
           "Username": $ctx.args.toUser
         })
         {}
@@ -1895,8 +1928,6 @@ Resources:
           $util.unauthorized()
         #end
         #set($ctx.stash.identityValue = $identityValue)
-        $util.log.info("RequestMappingTemplate stashed identityValue: ")
-        $util.log.info($ctx.stash.identityValue)
         ## [End] Check authMode and execute owner/group checks **
         ## @TODO: make sure the friend request exists and the status is sent.
         {
@@ -1904,8 +1935,6 @@ Resources:
           "payload": null
         }
       ResponseMappingTemplate: |
-        $util.log.info("ResponseMappingTemplate stashed identityValue: ")
-        $util.log.info($ctx.stash.identityValue)
         $extensions.setSubscriptionFilter({
           "filterGroup": [
             {
