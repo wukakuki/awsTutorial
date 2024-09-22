@@ -6,10 +6,6 @@ Parameters:
     Description: Prefix of resource name
     Default: awstutorial
     Type: String
-  awsTutorialApiKeyExpiration:
-    Description: ApiKey expiration time
-    Default: 1735488000
-    Type: Number
   GameServerBuildBucket:
     Description: S3 bucket for storing game server build files.
     Type: String
@@ -310,102 +306,102 @@ Resources:
         - preferred_username
         - custom:avatar
       UserPoolId: !Ref awsTutorialCognitoUserPool
-  # awsTutorialGameLiftRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     RoleName: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _GameLift_Role
-  #     Description: Role for AWS GameLift service
-  #     AssumeRolePolicyDocument:
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - gamelift.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Policies:
-  #       - PolicyName: !Join
-  #           - ''
-  #           - - !Ref ResourceNamePrefix
-  #             - _GameLift_Policy
-  #         PolicyDocument:
-  #           Statement:
-  #             - Action:
-  #                 - s3:GetObject
-  #                 - s3:GetObjectVersion
-  #               Effect: Allow
-  #               Resource: !Join
-  #                 - ''
-  #                 - - 'arn:aws:s3:::'
-  #                   - !Ref GameServerBuildBucket
-  #                   - /*
-  #     Tags:
-  #       - Key: Usage
-  #         Value: Youtube Streamer
-  # awsTutorialBuild:
-  #   Type: AWS::GameLift::Build
-  #   Properties:
-  #     Name: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _Build
-  #     OperatingSystem: AMAZON_LINUX_2
-  #     ServerSdkVersion: !Ref GameServerBuildServerSdkVersion
-  #     StorageLocation:
-  #       Bucket: !Ref GameServerBuildBucket
-  #       Key: !Ref GameServerBuildKey
-  #       ObjectVersion: !Ref GameServerBuildObjectVersion
-  #       RoleArn: !GetAtt awsTutorialGameLiftRole.Arn
-  #     Version: !Ref GameServerBuildVersion
-  # awsTutorialFleet:
-  #   Type: AWS::GameLift::Fleet
-  #   Properties:
-  #     Name: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _Fleet
-  #     Description: awsTutorial Fleet
-  #     BuildId: !Ref awsTutorialBuild
-  #     CertificateConfiguration:
-  #       CertificateType: GENERATED
-  #     ComputeType: EC2
-  #     DesiredEC2Instances: 1
-  #     EC2InboundPermissions:
-  #       - FromPort: 7777
-  #         ToPort: 7777
-  #         IpRange: 0.0.0.0/0
-  #         Protocol: UDP
-  #     EC2InstanceType: c6g.medium
-  #     FleetType: SPOT
-  #     MaxSize: 1
-  #     MinSize: 0
-  #     NewGameSessionProtectionPolicy: NoProtection
-  #     ResourceCreationLimitPolicy:
-  #       NewGameSessionsPerCreator: 1
-  #       PolicyPeriodInMinutes: 3
-  #     RuntimeConfiguration:
-  #       GameSessionActivationTimeoutSeconds: 300
-  #       MaxConcurrentGameSessionActivations: 1
-  #       ServerProcesses:
-  #         - ConcurrentExecutions: 1
-  #           LaunchPath: !Join
-  #             - ''
-  #             - - /local/game/
-  #               - !Ref GameServerLaunchPath
-  # awsTutorialAlias:
-  #   Type: AWS::GameLift::Alias
-  #   Properties:
-  #     Name: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _Alias
-  #     Description: awsTutorial Alias
-  #     RoutingStrategy:
-  #       FleetId: !Ref awsTutorialFleet
-  #       Type: SIMPLE
+   awsTutorialGameLiftRole:
+     Type: AWS::IAM::Role
+     Properties:
+       RoleName: !Join
+         - ''
+         - - !Ref ResourceNamePrefix
+           - _GameLift_Role
+       Description: Role for AWS GameLift service
+       AssumeRolePolicyDocument:
+         Statement:
+           - Effect: Allow
+             Principal:
+               Service:
+                 - gamelift.amazonaws.com
+             Action:
+               - sts:AssumeRole
+       Policies:
+         - PolicyName: !Join
+             - ''
+             - - !Ref ResourceNamePrefix
+               - _GameLift_Policy
+           PolicyDocument:
+             Statement:
+               - Action:
+                   - s3:GetObject
+                   - s3:GetObjectVersion
+                 Effect: Allow
+                 Resource: !Join
+                   - ''
+                   - - 'arn:aws:s3:::'
+                     - !Ref GameServerBuildBucket
+                     - /*
+       Tags:
+         - Key: Usage
+           Value: Youtube Streamer
+   awsTutorialBuild:
+     Type: AWS::GameLift::Build
+     Properties:
+       Name: !Join
+         - ''
+         - - !Ref ResourceNamePrefix
+           - _Build
+       OperatingSystem: AMAZON_LINUX_2
+       ServerSdkVersion: !Ref GameServerBuildServerSdkVersion
+       StorageLocation:
+         Bucket: !Ref GameServerBuildBucket
+         Key: !Ref GameServerBuildKey
+         ObjectVersion: !Ref GameServerBuildObjectVersion
+         RoleArn: !GetAtt awsTutorialGameLiftRole.Arn
+       Version: !Ref GameServerBuildVersion
+   awsTutorialFleet:
+     Type: AWS::GameLift::Fleet
+     Properties:
+       Name: !Join
+         - ''
+         - - !Ref ResourceNamePrefix
+           - _Fleet
+       Description: awsTutorial Fleet
+       BuildId: !Ref awsTutorialBuild
+       CertificateConfiguration:
+         CertificateType: GENERATED
+       ComputeType: EC2
+       DesiredEC2Instances: 1
+       EC2InboundPermissions:
+         - FromPort: 7777
+           ToPort: 7777
+           IpRange: 0.0.0.0/0
+           Protocol: UDP
+       EC2InstanceType: c6g.medium
+       FleetType: SPOT
+       MaxSize: 1
+       MinSize: 0
+       NewGameSessionProtectionPolicy: NoProtection
+       ResourceCreationLimitPolicy:
+         NewGameSessionsPerCreator: 1
+         PolicyPeriodInMinutes: 3
+       RuntimeConfiguration:
+         GameSessionActivationTimeoutSeconds: 300
+         MaxConcurrentGameSessionActivations: 1
+         ServerProcesses:
+           - ConcurrentExecutions: 1
+             LaunchPath: !Join
+               - ''
+               - - /local/game/
+                 - !Ref GameServerLaunchPath
+   awsTutorialAlias:
+     Type: AWS::GameLift::Alias
+     Properties:
+       Name: !Join
+         - ''
+         - - !Ref ResourceNamePrefix
+           - _Alias
+       Description: awsTutorial Alias
+       RoutingStrategy:
+         FleetId: !Ref awsTutorialFleet
+         Type: SIMPLE
   awsTutorialSearchUsersLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -889,43 +885,6 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
-  awsTutorialAppSyncLogRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Join
-        - ''
-        - - !Ref ResourceNamePrefix
-          - _AppSync_Log_Role
-      Description: Role for AWS AppSync Log
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: appsync.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        - PolicyName: !Join
-            - ''
-            - - !Ref ResourceNamePrefix
-              - _AppSync_Log_Policy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: AllowLogs
-                Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: !Join
-                  - ''
-                  - - 'arn:aws:logs:'
-                    - !Ref AWS::Region
-                    - ':'
-                    - !Ref AWS::AccountId
-                    - ':*'
   awsTutorialGraphQLApi:
     Type: AWS::AppSync::GraphQLApi
     Properties:
@@ -933,14 +892,9 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _GraphQL_API
-      AdditionalAuthenticationProviders:
-        - AuthenticationType: API_KEY
       ApiType: GRAPHQL
       AuthenticationType: AMAZON_COGNITO_USER_POOLS
       IntrospectionConfig: ENABLED
-      LogConfig:
-        CloudWatchLogsRoleArn: !GetAtt awsTutorialAppSyncLogRole.Arn
-        FieldLogLevel: ALL
       UserPoolConfig:
         AppIdClientRegex: !Ref awsTutorialCognitoUserPoolClient
         AwsRegion: !Ref AWS::Region
@@ -950,11 +904,6 @@ Resources:
         - Key: Usage
           Value: Youtube Streamer
       Visibility: GLOBAL
-  awsTutorialGraphQLApiKey:
-    Type: AWS::AppSync::ApiKey
-    Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
-      Expires: !Ref awsTutorialApiKeyExpiration
   awsTutorialSearchUsersLambdaFunctionDataSourceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -1256,42 +1205,42 @@ Resources:
     Properties:
       ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
       Definition: |
-        schema @aws_api_key @aws_cognito_user_pools {
+        schema @aws_cognito_user_pools {
           query: Query
           mutation: Mutation
           subscription: Subscription
         }
-        type UserAttribute @aws_api_key @aws_cognito_user_pools {
+        type UserAttribute @aws_cognito_user_pools {
           Name: String!
           Value: String
         }
-        type GetUserResult @aws_api_key @aws_cognito_user_pools {
+        type GetUserResult @aws_cognito_user_pools {
           Username: String!
           UserAttributes: [UserAttribute]!
         }
-        type Friend @aws_api_key @aws_cognito_user_pools {
+        type Friend @aws_cognito_user_pools {
           fromUser: String!
           toUser: String!
           friendStatus: String!
           createdAt: Int
           updatedAt: Int
         }
-        type ListFriendsResult @aws_api_key @aws_cognito_user_pools {
+        type ListFriendsResult @aws_cognito_user_pools {
           friends: [Friend]
           nextToken: String
         }
-        type Query @aws_api_key @aws_cognito_user_pools {
+        type Query @aws_cognito_user_pools {
           getUser(username: String!): GetUserResult
           listPendingFriendRequests(nextToken: String): ListFriendsResult
           listFriends(nextToken: String): ListFriendsResult
         }
-        type Mutation @aws_api_key @aws_cognito_user_pools {
+        type Mutation @aws_cognito_user_pools {
           sendFriendRequest(toUser: String!): Friend
           acceptFriendRequest(fromUser: String!): Friend
           rejectFriendRequest(fromUser: String!): Friend
           deleteFriend(toUser: String!): Friend
         }
-        type Subscription @aws_api_key @aws_cognito_user_pools {
+        type Subscription @aws_cognito_user_pools {
           friendRequestSent: Friend @aws_subscribe(mutations: ["sendFriendRequest"])
           friendRequestAccepted(toUser: String): Friend @aws_subscribe(mutations: ["acceptFriendRequest"])
           friendRequestRejected(toUser: String): Friend @aws_subscribe(mutations: ["rejectFriendRequest"])
@@ -2214,12 +2163,12 @@ Metadata:
         - awsTutorialCognitoIdentityPool
         - awsTutorialCognitoUserPool
         - awsTutorialCognitoUserPoolClient
-    # Group2:
-    #   Label: GameLift
-    #   Members:
-    #     - awsTutorialGameLiftRole
-    #     - awsTutorialFleet
-    #     - awsTutorialAlias
+     Group2:
+       Label: GameLift
+       Members:
+         - awsTutorialGameLiftRole
+         - awsTutorialFleet
+         - awsTutorialAlias
     Group3:
       Label: User Generated Content
       Members:
@@ -2241,9 +2190,9 @@ Outputs:
   awsTutorialCognitoUserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !Ref awsTutorialCognitoUserPoolClient
-  # awsTutorialAliasId:
-  #   Description: GameLift Alias ID
-  #   Value: !Ref awsTutorialAlias
+   awsTutorialAliasId:
+     Description: GameLift Alias ID
+     Value: !Ref awsTutorialAlias
   awsTutorialUserGeneratedContentS3Bucket:
     Description: User Generated Content S3 Bucket
     Value: !Ref awsTutorialUserGeneratedContentS3Bucket
@@ -2259,6 +2208,3 @@ Outputs:
   awsTutorialGraphQLRealtimeEndpoint:
     Description: GraphQL realtime Endpoint
     Value: !GetAtt awsTutorialGraphQLApi.RealtimeUrl
-  awsTutorialGraphQLApiKey:
-    Description: GraphQL API Key
-    Value: !GetAtt awsTutorialGraphQLApiKey.ApiKey
