@@ -325,7 +325,7 @@ Outputs:
       Name: !Sub 'awsTutorialCognitoUserPoolId'
   awsTutorialCognitoUserPoolArn:
     Description: Cognito User Pool Arn
-    Value: !GetAttr awsTutorialCognitoUserPool.Arn
+    Value: !GetAtt awsTutorialCognitoUserPool.Arn
     Export:
       Name: !Sub 'awsTutorialCognitoUserPoolARN'
   awsTutorialCognitoUserPoolClientId:

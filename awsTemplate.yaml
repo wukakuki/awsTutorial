@@ -62,9 +62,9 @@ Resources:
         - ExportName: awsTutorialCognitoUserPoolARN
           OutputKey: awsTutorialCognitoUserPoolARN
           Description: Cognito User Pool ARN
-        - ExportName: awsTutorialCognitoUserPoolClient
-          OutputKey: awsTutorialCognitoUserPoolClient
-          Description: Cognito User Pool Client
+        - ExportName: awsTutorialCognitoUserPoolClientId
+          OutputKey: awsTutorialCognitoUserPoolClientId
+          Description: Cognito User Pool Client id
         - ExportName: awsTutorialIdentityPoolId
           OutputKey: awsTutorialIdentityPoolId
           Description: Cognito Identity Pool ID
@@ -114,7 +114,7 @@ Resources:
         ResourceNamePrefix: !Ref ResourceNamePrefix
         CognitoUserPool: !ImportValue awsTutorialCognitoUserPoolId
         CognitoUserPoolArn: !ImportValue awsTutorialCognitoUserPoolARN
-        CognitoUserPoolClient: !ImportValue awsTutorialCognitoUserPoolClient
+        CognitoUserPoolClient: !ImportValue awsTutorialCognitoUserPoolClientId
       Tags:
         - Key: Usage
           Value: Youtube Streamer
