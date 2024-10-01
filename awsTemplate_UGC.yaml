@@ -1,0 +1,328 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: awsTutorial(Account and user generated content part)
+Parameters:
+  ResourceNamePrefix:
+    Description: Prefix of resource name
+    Default: awstutorial
+    Type: String
+Resources:
+  awsTutorialLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _UserLogs
+      LogGroupClass: INFREQUENT_ACCESS
+      RetentionInDays: 7
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialUserGeneratedContentS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - '-user-generated-content-bucket'
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialCognitoAuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_Auth_Role
+      Description: Role for AWS Cognito Identity Auth
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+              - sts:TagSession
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref awsTutorialCognitoIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: authenticated
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _Cognito_Auth_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: GameLiftBasic
+                Effect: Allow
+                Action:
+                  - gamelift:SearchGameSessions
+                  - gamelift:CreateGameSession
+                  - gamelift:CreatePlayerSession
+                Resource: '*'
+              - Sid: UserGeneratedContent
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:PutObjectTagging
+                Resource: !Join
+                  - ''
+                  - - !GetAtt awsTutorialUserGeneratedContentS3Bucket.Arn
+                    - /${cognito-identity.amazonaws.com:sub}/*
+              - Sid: UserLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:logs:'
+                    - !Ref AWS::Region
+                    - ':'
+                    - !Ref AWS::AccountId
+                    - ':log-group:'
+                    # application composer bug
+                    # - !Ref awsTutorialLogGroup
+                    - !Ref ResourceNamePrefix
+                    - _UserLogs
+                    - ':log-stream:*'
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialCognitoUnauthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_Unauth_Role
+      Description: Role for AWS Cognito Identity Unauth
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+              - sts:TagSession
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref awsTutorialCognitoIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: unauthenticated
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _Cognito_Unauth_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: DenyAll
+                Effect: Deny
+                Action: '*'
+                Resource: '*'
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialUserGeneratedContentS3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref awsTutorialUserGeneratedContentS3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowUserUpload
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt awsTutorialCognitoAuthRole.Arn
+            Action:
+              - s3:PutObject
+            Resource: !Join
+              - ''
+              - - !GetAtt awsTutorialUserGeneratedContentS3Bucket.Arn
+                - /${cognito-identity.amazonaws.com:sub}/*
+          - Sid: AllowGet
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt awsTutorialCognitoAuthRole.Arn
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+            Resource: !Join
+              - ''
+              - - !GetAtt awsTutorialUserGeneratedContentS3Bucket.Arn
+                - /${cognito-identity.amazonaws.com:sub}/*
+          - Sid: AllowGetPublic
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt awsTutorialCognitoAuthRole.Arn
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+            Resource: !Join
+              - ''
+              - - !GetAtt awsTutorialUserGeneratedContentS3Bucket.Arn
+                - /*
+            Condition:
+              StringEquals:
+                s3:ExistingObjectTag/public: 'true'
+          - Sid: AllowTag
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt awsTutorialCognitoAuthRole.Arn
+            Action:
+              - s3:PutObjectTagging
+            Resource: !Join
+              - ''
+              - - !GetAtt awsTutorialUserGeneratedContentS3Bucket.Arn
+                - /${cognito-identity.amazonaws.com:sub}/*
+  awsTutorialCognitoIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_Identity_Pool
+      AllowUnauthenticatedIdentities: true
+      CognitoIdentityProviders:
+        - ClientId: !Ref awsTutorialCognitoUserPoolClient
+          ProviderName: !GetAtt awsTutorialCognitoUserPool.ProviderName
+          ServerSideTokenCheck: true
+  awsTutorialCognitoIdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref awsTutorialCognitoIdentityPool
+      Roles:
+        unauthenticated: !GetAtt awsTutorialCognitoUnauthRole.Arn
+        authenticated: !GetAtt awsTutorialCognitoAuthRole.Arn
+  awsTutorialCognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_User_Pool
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AliasAttributes:
+        - email
+        - preferred_username
+      AutoVerifiedAttributes:
+        - email
+      DeletionProtection: INACTIVE
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      MfaConfiguration: OPTIONAL
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      Schema:
+        - Name: avatar
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      UserAttributeUpdateSettings:
+        AttributesRequireVerificationBeforeUpdate:
+          - email
+      UsernameConfiguration:
+        CaseSensitive: true
+      UserPoolAddOns:
+        AdvancedSecurityMode: 'OFF'
+      UserPoolTags:
+        Usage: Youtube Streamer
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+  awsTutorialCognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Cognito_User_Pool_Client
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthFlowsUserPoolClient: false
+      AuthSessionValidity: 3
+      EnablePropagateAdditionalUserContextData: false
+      EnableTokenRevocation: true
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: true
+      PreventUserExistenceErrors: ENABLED
+      SupportedIdentityProviders:
+        - COGNITO
+      ReadAttributes:
+        - preferred_username
+        - email
+        - email_verified
+        - custom:avatar
+      WriteAttributes:
+        - email
+        - preferred_username
+        - custom:avatar
+      UserPoolId: !Ref awsTutorialCognitoUserPool
+Metadata:
+  AWS::Composer::Groups:
+    Group1:
+      Label: Cognito
+      Members:
+        - awsTutorialCognitoIdentityPool
+        - awsTutorialCognitoUserPool
+        - awsTutorialCognitoUserPoolClient
+    Group2:
+      Label: User Generated Content
+      Members:
+        - awsTutorialUserGeneratedContentS3Bucket
+    Group3:
+      Label: Logs
+      Members:
+        - awsTutorialLogGroup
+Outputs:
+  awsTutorialRegion:
+    Description: AWS Region
+    Value: !Ref AWS::Region
+  awsTutorialCognitoIdentityPoolId:
+    Description: Cognito Identity Pool ID
+    Value: !Ref awsTutorialCognitoIdentityPool
+  awsTutorialCognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref awsTutorialCognitoUserPool
+  awsTutorialCognitoUserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref awsTutorialCognitoUserPoolClient
+  awsTutorialUserGeneratedContentS3Bucket:
+    Description: User Generated Content S3 Bucket
+    Value: !Ref awsTutorialUserGeneratedContentS3Bucket
+  awsTutorialLogGroupName:
+    Description: Log Group Name
+    Value: !Ref awsTutorialLogGroup
