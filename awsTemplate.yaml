@@ -59,8 +59,8 @@ Resources:
         - ExportName: awsTutorialCognitoUserPoolId
           OutputKey: awsTutorialCognitoUserPoolId
           Description: Cognito User Pool ID
-        - ExportName: awsTutorialCognitoUserPoolARN
-          OutputKey: awsTutorialCognitoUserPoolARN
+        - ExportName: awsTutorialCognitoUserPoolArn
+          OutputKey: awsTutorialCognitoUserPoolArn
           Description: Cognito User Pool ARN
         - ExportName: awsTutorialCognitoUserPoolClientId
           OutputKey: awsTutorialCognitoUserPoolClientId
@@ -113,7 +113,7 @@ Resources:
       Parameters:
         ResourceNamePrefix: !Ref ResourceNamePrefix
         CognitoUserPool: !ImportValue awsTutorialCognitoUserPoolId
-        CognitoUserPoolArn: !ImportValue awsTutorialCognitoUserPoolARN
+        CognitoUserPoolArn: !ImportValue awsTutorialCognitoUserPoolArn
         CognitoUserPoolClient: !ImportValue awsTutorialCognitoUserPoolClientId
       Tags:
         - Key: Usage
