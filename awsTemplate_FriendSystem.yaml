@@ -1764,15 +1764,23 @@ Outputs:
   awsTutorialRegion:
     Description: AWS Region
     Value: !Ref AWS::Region
+    Export:
+      Name: !Sub 'awsTutorialRegion'
   awsTutorialGraphQLHost:
     Description: GraphQL Host
     Value: !GetAtt awsTutorialGraphQLApi.GraphQLDns
+    Export:
+      Name: !Sub 'awsTutorialGraphQLHost'
   awsTutorialGraphQLEndpoint:
     Description: GraphQL Endpoint
     Value: !GetAtt awsTutorialGraphQLApi.GraphQLUrl
+    Export:
+      Name: !Sub 'awsTutorialGraphQLEndpoint'
   awsTutorialGraphQLRealtimeEndpoint:
     Description: GraphQL realtime Endpoint
     Value: !GetAtt awsTutorialGraphQLApi.RealtimeUrl
+    Export:
+      Name: !Sub 'awsTutorialGraphQLRealtimeEndpoint'
 Metadata:
   AWS::Composer::Groups:
     Group:

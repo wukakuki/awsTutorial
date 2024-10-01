@@ -10,9 +10,11 @@ Parameters:
     Description: Url of the cloud formation template for cognito, cloudwatch
       log  group, S3 resources.
     Type: String
+    Default: https://raw.githubusercontent.com/wukakuki/awsTutorial/refs/heads/main/awsTemplate_UGC.yaml
   FriendSystemPartTemplateUrl:
     Description: Url of the cloud formation template for friend system.
     Type: String
+    Default: https://raw.githubusercontent.com/wukakuki/awsTutorial/refs/heads/main/awsTemplate_FriendSystem.yaml
   DeployGameServer:
     Description: Deploy gameserver to gamelift?
     Type: String
@@ -23,6 +25,7 @@ Parameters:
   GameLiftPartTemplateUrl:
     Description: Url of the cloud formation template for gamelift resources.
     Type: String
+    Default: https://raw.githubusercontent.com/wukakuki/awsTutorial/refs/heads/main/awsTemplate_GameLift.yaml
   GameServerBuildBucket:
     Description: S3 bucket for storing game server build files.
     Type: String
@@ -35,7 +38,7 @@ Parameters:
   GameServerBuildServerSdkVersion:
     Description: The server sdk version of the game server build file.
     Type: String
-    Default: '5.1.3'
+    Default: 5.1.3
   GameServerBuildVersion:
     Description: Version of the game server build.
     Type: String
@@ -48,7 +51,7 @@ Conditions:
     - 'true'
 Resources:
   awsTutorialUGCStack:
-    Type: AWS::CloudFormationStack
+    Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Ref UGCPartTemplateUrl
       Outputs:
@@ -73,7 +76,7 @@ Resources:
         - Key: Usage
           Value: Youtube Streamer
   awsTutorialGameLiftStack:
-    Type: AWS::CloudFormationStack
+    Type: AWS::CloudFormation::Stack
     Condition: ShouldDeployGameServer
     Properties:
       TemplateURL: !Ref GameLiftPartTemplateUrl
@@ -93,7 +96,7 @@ Resources:
         - Key: Usage
           Value: Youtube Streamer
   awsTutorialFriendSystemStack:
-    Type: AWS::CloudFormationStack
+    Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Ref FriendSystemPartTemplateUrl
       Outputs:
@@ -108,9 +111,9 @@ Resources:
           Description: GraphQL realtime Endpoint
       Parameters:
         ResourceNamePrefix: !Ref ResourceNamePrefix
-        CognitoUserPool: !Ref awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-        CognitoUserPoolArn: !Ref awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolARN
-        CognitoUserPoolClient: !Ref awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClient
+        CognitoUserPool: !ImportValue awsTutorialCognitoUserPoolId
+        CognitoUserPoolArn: !ImportValue awsTutorialCognitoUserPoolARN
+        CognitoUserPoolClient: !ImportValue awsTutorialCognitoUserPoolClient
       Tags:
         - Key: Usage
           Value: Youtube Streamer
