@@ -45,6 +45,7 @@ Parameters:
   GameServerLaunchPath:
     Description: The launch path of the game server.
     Type: String
+    Default: awsTutorial/Binaries/LinuxArm64/awsTutorialServer
 Conditions:
   ShouldDeployGameServer: !Equals
     - !Ref DeployGameServer
@@ -123,22 +124,22 @@ Outputs:
     Value: !Ref AWS::Region
   awsTutorialCognitoIdentityPoolId:
     Description: Cognito Identity Pool ID
-    Value: !Ref awsTutorialUGCStack.Outputs.awsTutorialCognitoIdentityPoolId
+    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoIdentityPoolId
   awsTutorialCognitoUserPoolId:
     Description: Cognito User Pool ID
-    Value: !Ref awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
   awsTutorialCognitoUserPoolClientId:
     Description: Cognito User Pool Client ID
-    Value: !Ref awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
   awsTutorialAliasId:
     Description: GameLift Alias ID
-    Value: !Ref awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
+    Value: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
   awsTutorialUserGeneratedContentS3Bucket:
     Description: User Generated Content S3 Bucket
-    Value: !Ref awsTutorialUGCStack.Outputs.awsTutorialUserGeneratedContentS3Bucket
+    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialUserGeneratedContentS3Bucket
   awsTutorialLogGroupName:
     Description: Log Group Name
-    Value: !Ref awsTutorialUGCStack.Outputs.awsTutorialLogGroupName
+    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialLogGroupName
   awsTutorialGraphQLHost:
     Description: GraphQL Host
     Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialGraphQLHost
