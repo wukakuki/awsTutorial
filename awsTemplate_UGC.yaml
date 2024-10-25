@@ -308,38 +308,33 @@ Metadata:
       Members:
         - awsTutorialLogGroup
 Outputs:
-  awsTutorialRegion:
-    Description: AWS Region
-    Value: !Ref AWS::Region
-    Export:
-      Name: !Sub 'awsTutorialRegion'
   awsTutorialCognitoIdentityPoolId:
     Description: Cognito Identity Pool ID
     Value: !Ref awsTutorialCognitoIdentityPool
     Export:
-      Name: !Sub 'awsTutorialCognitoIdentityPoolId'
+      Name: !Sub awsTutorialCognitoIdentityPoolId
   awsTutorialCognitoUserPoolId:
     Description: Cognito User Pool ID
     Value: !Ref awsTutorialCognitoUserPool
     Export:
-      Name: !Sub 'awsTutorialCognitoUserPoolId'
+      Name: !Sub awsTutorialCognitoUserPoolId
   awsTutorialCognitoUserPoolArn:
     Description: Cognito User Pool Arn
     Value: !GetAtt awsTutorialCognitoUserPool.Arn
     Export:
-      Name: !Sub 'awsTutorialCognitoUserPoolArn'
+      Name: !Sub awsTutorialCognitoUserPoolArn
   awsTutorialCognitoUserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !Ref awsTutorialCognitoUserPoolClient
     Export:
-      Name: !Sub 'awsTutorialCognitoUserPoolClientId'
+      Name: !Sub awsTutorialCognitoUserPoolClientId
   awsTutorialUserGeneratedContentS3Bucket:
     Description: User Generated Content S3 Bucket
     Value: !Ref awsTutorialUserGeneratedContentS3Bucket
     Export:
-      Name: !Sub 'awsTutorialUserGeneratedContentS3Bucket'
+      Name: !Sub awsTutorialUserGeneratedContentS3Bucket
   awsTutorialLogGroupName:
     Description: Log Group Name
     Value: !Ref awsTutorialLogGroup
     Export:
-      Name: !Sub 'awsTutorialLogGroupName'
+      Name: !Sub awsTutorialLogGroupName

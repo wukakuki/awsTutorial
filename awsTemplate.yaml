@@ -10,11 +10,19 @@ Parameters:
     Description: Url of the cloud formation template for cognito, cloudwatch
       log  group, S3 resources.
     Type: String
-    Default: https://raw.githubusercontent.com/wukakuki/awsTutorial/refs/heads/main/awsTemplate_UGC.yaml
+    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_UGC.yaml
   FriendSystemPartTemplateUrl:
     Description: Url of the cloud formation template for friend system.
     Type: String
-    Default: https://raw.githubusercontent.com/wukakuki/awsTutorial/refs/heads/main/awsTemplate_FriendSystem.yaml
+    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_FriendSystem.yaml
+  WebSocketMMOPartTemplateUrl:
+    Description: Url of the cloud formation template for websocket mmo.
+    Type: String
+    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_WebSocketMMO.yaml
+  WebSocketMMOEC2InstanceType:
+    Description: ec2 instance type of the web socket mmo server
+    Type: String
+    Default: t4g.nano
   DeployGameServer:
     Description: Deploy gameserver to gamelift?
     Type: String
@@ -25,7 +33,7 @@ Parameters:
   GameLiftPartTemplateUrl:
     Description: Url of the cloud formation template for gamelift resources.
     Type: String
-    Default: https://raw.githubusercontent.com/wukakuki/awsTutorial/refs/heads/main/awsTemplate_GameLift.yaml
+    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_GameLift.yaml
   GameServerBuildBucket:
     Description: S3 bucket for storing game server build files.
     Type: String
@@ -55,22 +63,6 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Ref UGCPartTemplateUrl
-      Outputs:
-        - ExportName: awsTutorialCognitoUserPoolId
-          OutputKey: awsTutorialCognitoUserPoolId
-          Description: Cognito User Pool ID
-        - ExportName: awsTutorialCognitoUserPoolArn
-          OutputKey: awsTutorialCognitoUserPoolArn
-          Description: Cognito User Pool ARN
-        - ExportName: awsTutorialCognitoUserPoolClientId
-          OutputKey: awsTutorialCognitoUserPoolClientId
-          Description: Cognito User Pool Client id
-        - ExportName: awsTutorialIdentityPoolId
-          OutputKey: awsTutorialIdentityPoolId
-          Description: Cognito Identity Pool ID
-        - ExportName: awsTutorialCloudWatchLogGroup
-          OutputKey: awsTutorialCloudWatchLogGroup
-          Description: CloudWatch Log Group
       Parameters:
         ResourceNamePrefix: !Ref ResourceNamePrefix
       Tags:
@@ -81,40 +73,40 @@ Resources:
     Condition: ShouldDeployGameServer
     Properties:
       TemplateURL: !Ref GameLiftPartTemplateUrl
-      Outputs:
-        - ExportName: awsTutorialAliasId
-          OutputKey: awsTutorialAliasId
-          Description: GameLift Alias ID
       Parameters:
         ResourceNamePrefix: !Ref ResourceNamePrefix
-        BuildBucket: !Ref GameServerBuildBucket
-        BuildKey: !Ref GameServerBuildKey
-        BuildObjectVersion: !Ref GameServerBuildObjectVersion
-        BuildServerSdkVersion: !Ref GameServerBuildServerSdkVersion
-        BuildVersion: !Ref GameServerBuildVersion
-        LaunchPath: !Ref GameServerLaunchPath
+        GameServerBuildBucket: !Ref GameServerBuildBucket
+        GameServerBuildKey: !Ref GameServerBuildKey
+        GameServerBuildObjectVersion: !Ref GameServerBuildObjectVersion
+        GameServerBuildServerSdkVersion: !Ref GameServerBuildServerSdkVersion
+        GameServerBuildVersion: !Ref GameServerBuildVersion
+        GameServerLaunchPath: !Ref GameServerLaunchPath
       Tags:
         - Key: Usage
           Value: Youtube Streamer
   awsTutorialFriendSystemStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: awsTutorialUGCStack
     Properties:
       TemplateURL: !Ref FriendSystemPartTemplateUrl
-      Outputs:
-        - ExportName: awsTutorialGraphQLHost
-          OutputKey: awsTutorialGraphQLHost
-          Description: GraphQL Host
-        - ExportName: awsTutorialGraphQLEndpoint
-          OutputKey: awsTutorialGraphQLEndpoint
-          Description: GraphQL Endpoint
-        - ExportName: awsTutorialGraphQLRealtimeEndpoint
-          OutputKey: awsTutorialGraphQLRealtimeEndpoint
-          Description: GraphQL realtime Endpoint
       Parameters:
         ResourceNamePrefix: !Ref ResourceNamePrefix
-        CognitoUserPool: !ImportValue awsTutorialCognitoUserPoolId
-        CognitoUserPoolArn: !ImportValue awsTutorialCognitoUserPoolArn
-        CognitoUserPoolClient: !ImportValue awsTutorialCognitoUserPoolClientId
+        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: awsTutorialUGCStack
+    Properties:
+      TemplateURL: !Ref WebSocketMMOPartTemplateUrl
+      Parameters:
+        ResourceNamePrefix: !Ref ResourceNamePrefix
+        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+        WebSocketMMOEC2InstanceType: !Ref WebSocketMMOEC2InstanceType
       Tags:
         - Key: Usage
           Value: Youtube Streamer
@@ -132,6 +124,7 @@ Outputs:
     Description: Cognito User Pool Client ID
     Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
   awsTutorialAliasId:
+    Condition: ShouldDeployGameServer
     Description: GameLift Alias ID
     Value: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
   awsTutorialUserGeneratedContentS3Bucket:
@@ -149,3 +142,6 @@ Outputs:
   awsTutorialGraphQLRealtimeEndpoint:
     Description: GraphQL realtime Endpoint
     Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialGraphQLRealtimeEndpoint
+  awsTutorialWebSocketMMODNSName:
+    Description: The DNSName of the WebSocket MMO Server
+    Value: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName

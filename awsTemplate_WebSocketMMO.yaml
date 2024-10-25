@@ -1,0 +1,462 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: awsTutorial(WebSocket MMO part)
+Mappings:
+  AMIRegionMappings:
+    ap-northeast-2:
+      AMI: ami-0225d85c382cf3ab5
+Parameters:
+  ResourceNamePrefix:
+    Description: Prefix of resource name
+    Default: awstutorial
+    Type: String
+  WebSocketMMOEC2InstanceType:
+    Description: ec2 instance type of the web socket mmo server
+    Type: String
+    Default: t4g.nano
+  CognitoUserPool:
+    Description: Cognito User Pool id of the cognito user pool client which provide
+      authentication for graphql api
+    Type: String
+  CognitoUserPoolClient:
+    Description: Cognito User Pool client id of the cognito user pool client which
+      provide authentication for graphql api
+    Type: String
+Resources:
+  awsTutorialWebSocketMMOEC2VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOEC2Subnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+          Ref: AWS::Region
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref awsTutorialWebSocketMMOEC2VPC
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOEC2InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOEC2VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref awsTutorialWebSocketMMOEC2InternetGateway
+      VpcId: !Ref awsTutorialWebSocketMMOEC2VPC
+  awsTutorialWebSocketMMOEC2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref awsTutorialWebSocketMMOEC2VPC
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOEC2Route:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref awsTutorialWebSocketMMOEC2InternetGateway
+      RouteTableId: !Ref awsTutorialWebSocketMMOEC2RouteTable
+  awsTutorialWebSocketMMOEC2SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref awsTutorialWebSocketMMOEC2RouteTable
+      SubnetId: !Ref awsTutorialWebSocketMMOEC2Subnet
+  awsTutorialWebSocketMMOEC2InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _WebSocket_MMO_EC2_Instance_SG
+      GroupDescription: Security Group for WebSocket MMO Server
+      VpcId: !Ref awsTutorialWebSocketMMOEC2VPC
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSOcketMMOEC2InstanceSecurityGroupIngressFromELB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from ELB
+      GroupId: !Ref awsTutorialWebSocketMMOEC2InstanceSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8000
+      ToPort: 8000
+      SourceSecurityGroupId: !Ref awsTutorialWebSocketMMOELBSecurityGroup
+  awsTutorialWebSocketMMOEC2LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _WebSocket_MMO_EC2_LaunchTemplate
+      LaunchTemplateData:
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            InstanceInterruptionBehavior: stop
+            SpotInstanceType: persistent
+        InstanceType: !Ref WebSocketMMOEC2InstanceType
+        ImageId: !FindInMap
+          - AMIRegionMappings
+          - !Ref AWS::Region
+          - AMI
+        UserData: !Base64
+          Fn::Sub: |
+            {
+              "region": "${AWS::Region}",
+              "user_pool_id": "${CognitoUserPool}",
+              "app_client_id": "${CognitoUserPoolClient}"
+            }
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Usage
+                Value: Youtube Streamer
+          - ResourceType: volume
+            Tags:
+              - Key: Usage
+                Value: Youtube Streamer
+          - ResourceType: network-interface
+            Tags:
+              - Key: Usage
+                Value: Youtube Streamer
+          - ResourceType: spot-instances-request
+            Tags:
+              - Key: Usage
+                Value: Youtube Streamer
+  awsTutorialWebSocketMMOEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs
+          Ref: AWS::Region
+      LaunchTemplate:
+        LaunchTemplateId: !Ref awsTutorialWebSocketMMOEC2LaunchTemplate
+        Version: !GetAtt awsTutorialWebSocketMMOEC2LaunchTemplate.DefaultVersionNumber
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: '0'
+          GroupSet:
+            - !Ref awsTutorialWebSocketMMOEC2InstanceSecurityGroup
+          SubnetId: !Ref awsTutorialWebSocketMMOEC2Subnet
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOELBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _WebSocket_MMO_ELB_SG
+      GroupDescription: Security Group for WebSocket MMO Server
+      VpcId: !Ref awsTutorialWebSocketMMOEC2VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.88.0/21
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.239.134.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 52.82.134.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.86.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.140.0/22
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.0.0/18
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.239.204.0/22
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.160.0/19
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 70.132.0.0/18
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 15.158.0.0/16
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.136.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.239.170.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 52.46.0.0/22
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.96.0/19
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.184.0/22
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 204.246.166.0/24
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.64.0/21
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.172.0/22
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 205.251.218.0/24
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 52.46.4.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.144.0/20
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.176.0/21
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.78.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.248.0/22
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 64.252.128.0/18
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.154.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 64.252.64.0/18
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.144.0/21
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.224.0/21
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.128.0/21
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 52.46.32.0/19
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 3.172.64.0/18
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 52.82.128.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 18.68.0.0/16
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.156.0/22
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.160.0/21
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.240.0/21
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.192.0/19
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.76.0/24
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 52.46.16.0/20
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.239.208.0/21
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.188.0/23
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 3.172.0.0/18
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.80.0/22
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 54.182.128.0/20
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 130.176.72.0/22
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 13.124.199.0/24
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 3.29.57.0/26
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOELB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - '-WebSocket-MMO-ELB'
+      Type: network
+      Scheme: internet-facing
+      Subnets:
+        - !Ref awsTutorialWebSocketMMOEC2Subnet
+      SecurityGroups:
+        - !Ref awsTutorialWebSocketMMOELBSecurityGroup
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOELBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - '-WebSocket-MMO-ELB-TG'
+      HealthCheckPath: /health
+      HealthCheckPort: 8000
+      HealthCheckProtocol: HTTP
+      Protocol: TCP
+      Port: 8000
+      VpcId: !Ref awsTutorialWebSocketMMOEC2VPC
+      TargetType: instance
+      Targets:
+        - Id: !Ref awsTutorialWebSocketMMOEC2Instance
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOELBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref awsTutorialWebSocketMMOELB
+      Protocol: TCP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref awsTutorialWebSocketMMOELBTargetGroup
+  awsTutorialWebSocketMMOCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          TargetOriginId: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _WebSocket_MMO_CLoudFront_Distribution_ELB_Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST # For WebSocket
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            Headers:
+              - Authorization
+              - Sec-WebSocket-Key
+              - Sec-WebSocket-Version
+              - Sec-WebSocket-Extensions
+              - Sec-WebSocket-Accept
+              - Sec-WebSocket-Protocol
+              - Sec-WebSocket-Server
+            QueryString: true
+        Enabled: true
+        HttpVersion: http2and3
+        Origins:
+          - Id: !Join
+              - ''
+              - - !Ref ResourceNamePrefix
+                - _WebSocket_MMO_CLoudFront_Distribution_ELB_Origin
+            DomainName: !GetAtt awsTutorialWebSocketMMOELB.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+Outputs:
+  awsTutorialWebSocketMMODNSName:
+    Description: The DNSName of the WebSocket MMO Server
+    Value: !GetAtt awsTutorialWebSocketMMOCloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub awsTutorialWebSocketMMODNSName

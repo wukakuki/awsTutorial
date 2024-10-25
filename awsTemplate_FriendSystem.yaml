@@ -1761,11 +1761,6 @@ Resources:
         $util.toJson($ctx.result)
       TypeName: Subscription
 Outputs:
-  awsTutorialRegion:
-    Description: AWS Region
-    Value: !Ref AWS::Region
-    Export:
-      Name: !Sub 'awsTutorialRegion'
   awsTutorialGraphQLHost:
     Description: GraphQL Host
     Value: !GetAtt awsTutorialGraphQLApi.GraphQLDns

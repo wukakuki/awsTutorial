@@ -130,11 +130,6 @@ Metadata:
         - awsTutorialFleet
         - awsTutorialAlias
 Outputs:
-  awsTutorialRegion:
-    Description: AWS Region
-    Value: !Ref AWS::Region
-    Export:
-      Name: !Sub 'awsTutorialRegion'
   awsTutorialAliasId:
     Description: GameLift Alias ID
     Value: !Ref awsTutorialAlias
