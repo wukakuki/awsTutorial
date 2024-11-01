@@ -3,8 +3,44 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: awsTutorial(WebSocket MMO part)
 Mappings:
   AMIRegionMappings:
+    ap-east-1:
+      AMI: ami-04be80381f9bffc47
+    ap-south-1:
+      AMI: ami-06198c1427c1b450d
+    ap-northeast-1:
+      AMI: ami-0a5e186bdc5ee9d9e
     ap-northeast-2:
       AMI: ami-0225d85c382cf3ab5
+    ap-northeast-3:
+      AMI: ami-0d59d20e64f82fa3d
+    ap-southeast-1:
+      AMI: ami-0f76a3f424b37c908
+    ap-southeast-2:
+      AMI: ami-0200ac28c3fbbf6ee
+    ca-central-1:
+      AMI: ami-030d8ac1dc91a8fe9
+    eu-central-1:
+      AMI: ami-0f8699d53cc876e39
+    eu-west-1:
+      AMI: ami-0c2054a758119ad15
+    eu-west-2:
+      AMI: ami-016b38c76c894c56d
+    eu-west-3:
+      AMI: ami-01eb478a2ce36addf
+    eu-north-1:
+      AMI: ami-04e399d14bc2b2f43
+    me-south-1:
+      AMI: ami-04d149313c5db6d43
+    sa-east-1:
+      AMI: ami-080852f1fbfcdc73b
+    us-east-1:
+      AMI: ami-056995773a894056a
+    us-east-2:
+      AMI: ami-0f019af270dd5b58e
+    us-west-1:
+      AMI: ami-079f6ef354c94016f
+    us-west-2:
+      AMI: ami-0c9b41c3a5bacd9b5
 Parameters:
   ResourceNamePrefix:
     Description: Prefix of resource name
@@ -416,7 +452,6 @@ Resources:
             - ''
             - - !Ref ResourceNamePrefix
               - _WebSocket_MMO_CLoudFront_Distribution_ELB_Origin
-          ViewerProtocolPolicy: redirect-to-https
           AllowedMethods:
             - GET
             - HEAD
@@ -425,9 +460,7 @@ Resources:
             - PATCH
             - POST # For WebSocket
             - DELETE
-          CachedMethods:
-            - GET
-            - HEAD
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # caching disabled
           ForwardedValues:
             Headers:
               - Authorization
@@ -438,6 +471,8 @@ Resources:
               - Sec-WebSocket-Protocol
               - Sec-WebSocket-Server
             QueryString: true
+          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3 # all viewer
+          ViewerProtocolPolicy: redirect-to-https
         Enabled: true
         HttpVersion: http2and3
         Origins:
