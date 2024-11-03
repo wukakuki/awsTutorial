@@ -90,7 +90,7 @@ Resources:
       DesiredEC2Instances: 1
       EC2InboundPermissions:
         - FromPort: 7777
-          ToPort: 7777
+          ToPort: 7780
           IpRange: 0.0.0.0/0
           Protocol: UDP
       EC2InstanceType: c6g.medium
@@ -103,9 +103,9 @@ Resources:
         PolicyPeriodInMinutes: 3
       RuntimeConfiguration:
         GameSessionActivationTimeoutSeconds: 300
-        MaxConcurrentGameSessionActivations: 1
+        MaxConcurrentGameSessionActivations: 2
         ServerProcesses:
-          - ConcurrentExecutions: 1
+          - ConcurrentExecutions: 4
             LaunchPath: !Join
               - ''
               - - /local/game/
