@@ -4,43 +4,43 @@ Description: awsTutorial(WebSocket MMO part)
 Mappings:
   AMIRegionMappings:
     ap-east-1:
-      AMI: ami-04be80381f9bffc47
+      AMI: ami-08d441263db50e01b
     ap-south-1:
-      AMI: ami-06198c1427c1b450d
+      AMI: ami-092d87126961ad5c1
     ap-northeast-1:
-      AMI: ami-0a5e186bdc5ee9d9e
+      AMI: ami-09b4ccdef9ed53ae6
     ap-northeast-2:
-      AMI: ami-0225d85c382cf3ab5
+      AMI: ami-0e09264f1f818c7f6
     ap-northeast-3:
-      AMI: ami-0d59d20e64f82fa3d
+      AMI: ami-00f213bbfd0f04352
     ap-southeast-1:
-      AMI: ami-0f76a3f424b37c908
+      AMI: ami-02f044ca3eb2459d9
     ap-southeast-2:
-      AMI: ami-0200ac28c3fbbf6ee
+      AMI: ami-02895609e135cefae
     ca-central-1:
-      AMI: ami-030d8ac1dc91a8fe9
+      AMI: ami-0552c316d95f571c2
     eu-central-1:
-      AMI: ami-0f8699d53cc876e39
+      AMI: ami-0cc678fe7a307f26f
     eu-west-1:
-      AMI: ami-0c2054a758119ad15
+      AMI: ami-0c9e65895a5d32313
     eu-west-2:
-      AMI: ami-016b38c76c894c56d
+      AMI: ami-007b469c9fbdefeef
     eu-west-3:
-      AMI: ami-01eb478a2ce36addf
+      AMI: ami-0cd60c47f03b16d54
     eu-north-1:
-      AMI: ami-04e399d14bc2b2f43
+      AMI: ami-071b1217092df03ef
     me-south-1:
-      AMI: ami-04d149313c5db6d43
+      AMI: ami-09fb7a97ce5eb2996
     sa-east-1:
-      AMI: ami-080852f1fbfcdc73b
+      AMI: ami-0581e3c7936e16eeb
     us-east-1:
-      AMI: ami-056995773a894056a
+      AMI: ami-0eb47cccd5762487a
     us-east-2:
-      AMI: ami-0f019af270dd5b58e
+      AMI: ami-0e382f9c1ca897760
     us-west-1:
-      AMI: ami-079f6ef354c94016f
+      AMI: ami-01fc00fd68482db4a
     us-west-2:
-      AMI: ami-0c9b41c3a5bacd9b5
+      AMI: ami-00325eb31f293a0cc
 Parameters:
   ResourceNamePrefix:
     Description: Prefix of resource name
@@ -58,6 +58,14 @@ Parameters:
     Description: Cognito User Pool client id of the cognito user pool client which
       provide authentication for graphql api
     Type: String
+  JwksUpdateInterval:
+    Description: Seconds between two jwks update
+    Type: Number
+    Default: 3600
+  PositionUpdateInterval:
+    Description: Seconds between two position update. (Set to 0 to make realtime MMO system)
+    Type: Number
+    Default: 5
 Resources:
   awsTutorialWebSocketMMOEC2VPC:
     Type: AWS::EC2::VPC
@@ -153,6 +161,8 @@ Resources:
         UserData: !Base64
           Fn::Sub: |
             {
+              "jwks_update_interval": ${JwksUpdateInterval},
+              "position_update_interval": ${PositionUpdateInterval},
               "region": "${AWS::Region}",
               "user_pool_id": "${CognitoUserPool}",
               "app_client_id": "${CognitoUserPoolClient}"

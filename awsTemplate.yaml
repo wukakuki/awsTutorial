@@ -15,10 +15,22 @@ Parameters:
     Description: Url of the cloud formation template for friend system.
     Type: String
     Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_FriendSystem.yaml
+  # InvitationSystemPartTemplateUrl:
+  #   Description: Url of the cloud formation template for websocket mmo.
+  #   Type: String
+  #   Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_InvitationSystem.yaml
   WebSocketMMOPartTemplateUrl:
     Description: Url of the cloud formation template for websocket mmo.
     Type: String
     Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_WebSocketMMO.yaml
+  JwksUpdateInterval:
+    Description: Seconds between two jwks update
+    Type: Number
+    Default: 3600
+  PositionUpdateInterval:
+    Description: Seconds between two position update. (Set to 0 to make realtime MMO system)
+    Type: Number
+    Default: 5
   WebSocketMMOEC2InstanceType:
     Description: ec2 instance type of the web socket mmo server
     Type: String
@@ -46,7 +58,7 @@ Parameters:
   GameServerBuildServerSdkVersion:
     Description: The server sdk version of the game server build file.
     Type: String
-    Default: 5.1.3
+    Default: 5.2.0
   GameServerBuildVersion:
     Description: Version of the game server build.
     Type: String
@@ -97,6 +109,19 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
+  # awsTutorialInvitationSystemStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn: awsTutorialUGCStack
+  #   Properties:
+  #     TemplateURL: !Ref InvitationSystemPartTemplateUrl
+  #     Parameters:
+  #       ResourceNamePrefix: !Ref ResourceNamePrefix
+  #       CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+  #       CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+  #       CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+  #     Tags:
+  #       - Key: Usage
+  #         Value: Youtube Streamer
   awsTutorialWebSocketMMOStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: awsTutorialUGCStack
@@ -106,7 +131,8 @@ Resources:
         ResourceNamePrefix: !Ref ResourceNamePrefix
         CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
         CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
-        WebSocketMMOEC2InstanceType: !Ref WebSocketMMOEC2InstanceType
+        JwksUpdateInterval: !Ref JwksUpdateInterval
+        PositionUpdateInterval: !Ref PositionUpdateInterval
       Tags:
         - Key: Usage
           Value: Youtube Streamer

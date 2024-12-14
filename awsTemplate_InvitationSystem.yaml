@@ -1,0 +1,305 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: awsTutorial(Invitation System part)
+Parameters:
+  ResourceNamePrefix:
+    Description: Prefix of resource name
+    Default: awstutorial
+    Type: String
+  CognitoUserPool:
+    Description: Cognito User Pool id of the cognito user pool client which provide
+      authentication for graphql api
+    Type: String
+  CognitoUserPoolArn:
+    Description: Cognito User Pool id of the cognito user pool client which provide
+      authentication for graphql api
+    Type: String
+  CognitoUserPoolClient:
+    Description: Cognito User Pool client id of the cognito user pool client which
+      provide authentication for graphql api
+    Type: String
+Resources:
+  # awsTutorialInvitationDynamoDBTable:
+  #   Type: AWS::DynamoDB::Table
+  #   Properties:
+  #     TableName: !Join
+  #       - ''
+  #       - - !Ref ResourceNamePrefix
+  #         - _Invitation_DynamoDB_Table
+  #     AttributeDefinitions:
+  #       - AttributeName: toUser
+  #         AttributeType: S
+  #       - AttributeName: fromUser
+  #         AttributeType: S
+  #       - AttributeName: invitationStatus
+  #         AttributeType: S
+  #       - AttributeName: roomId
+  #         AttributeType: S
+  #       - AttributeName: createdAt
+  #         AttributeType: N
+  #       - AttributeName: updatedAt
+  #         AttributeType: N
+  #     BillingMode: PAY_PER_REQUEST
+  #     DeletionProtectionEnabled: false
+  #     OnDemandThroughput:
+  #       MaxReadRequestUnits: 1
+  #       MaxWriteRequestUnits: 1
+  #     TableClass: STANDARD
+  #     KeySchema:
+  #       - AttributeName: fromUser
+  #         KeyType: HASH
+  #       - AttributeName: createdAt
+  #         KeyType: RANGE
+  #     Tags:
+  #       - Key: Usage
+  #         Value: Youtube Streamer
+  # awsTutorialInvitationGraphQLApi:
+  #   Type: AWS::AppSync::GraphQLApi
+  #   Properties:
+  #     Name: !Join
+  #       - ''
+  #       - - !Ref ResourceNamePrefix
+  #         - Invitation_GraphQL_API
+  #     ApiType: GRAPHQL
+  #     AuthenticationType: AMAZON_COGNITO_USER_POOLS
+  #     IntrospectionConfig: ENABLED
+  #     UserPoolConfig:
+  #       AppIdClientRegex: !Ref CognitoUserPoolClient
+  #       AwsRegion: !Ref AWS::Region
+  #       DefaultAction: ALLOW
+  #       UserPoolId: !Ref CognitoUserPool
+  #     Tags:
+  #       - Key: Usage
+  #         Value: Youtube Streamer
+  #     Visibility: GLOBAL
+  # awsTutorialInvitationDataSourceRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: !Join
+  #       - ''
+  #       - - !Ref ResourceNamePrefix
+  #         - _Invitation_DataSource_Role
+  #     Description: Role for AWS Graphql Api Invitation Data Source
+  #     AssumeRolePolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: appsync.amazonaws.com
+  #           Action:
+  #             - sts:AssumeRole
+  #     Policies:
+  #       - PolicyName: !Join
+  #           - ''
+  #           - - !Ref ResourceNamePrefix
+  #             - _Invitation_DataSource_Policy
+  #         PolicyDocument:
+  #           Version: '2012-10-17'
+  #           Statement:
+  #             - Sid: InvitationDataSourcePolicy
+  #               Effect: Allow
+  #               Action:
+  #                 - dynamodb:DeleteItem
+  #                 - dynamodb:GetItem
+  #                 - dynamodb:PutItem
+  #                 - dynamodb:Query
+  #                 - dynamodb:Scan
+  #                 - dynamodb:UpdateItem
+  #               Resource:
+  #                 - !GetAtt awsTutorialInvitationDynamoDBTable.Arn
+  #                 - !Join
+  #                   - ''
+  #                   - - !GetAtt awsTutorialInvitationDynamoDBTable.Arn
+  #                     - /*
+  #     Tags:
+  #       - Key: Usage
+  #         Value: Youtube Streamer
+  # awsTutorialInvitationDataSource:
+  #   Type: AWS::AppSync::DataSource
+  #   Properties:
+  #     Name: !Join
+  #       - ''
+  #       - - !Ref ResourceNamePrefix
+  #         - _Invitation_DataSource
+  #     ApiId: !GetAtt awsTutorialInvitationGraphQLApi.ApiId
+  #     Description: Connect graphql api with Invitation data table
+  #     DynamoDBConfig:
+  #       AwsRegion: !Ref AWS::Region
+  #       TableName: !Ref awsTutorialInvitationDynamoDBTable
+  #     ServiceRoleArn: !GetAtt awsTutorialInvitationDataSourceRole.Arn
+  #     Type: AMAZON_DYNAMODB
+  awsTutorialInvitationNoneDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Invitation_None_DataSource
+      ApiId: !GetAtt awsTutorialInvitationGraphQLApi.ApiId
+      Description: Data source for subscriptions
+      Type: NONE
+  awsTutorialInvitationGraphQLSchema:
+    Type: AWS::AppSync::GraphQLSchema
+    Properties:
+      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      Definition: |
+        schema @aws_cognito_user_pools {
+          mutation: Mutation
+          subscription: Subscription
+        }
+        type Invitation @aws_cognito_user_pools {
+          fromUser: String!
+          toUser: String!
+          invitationStatus: String!
+          roomId: String!
+          createdAt: Int
+          updatedAt: Int
+        }
+        type Mutation @aws_cognito_user_pools {
+          sendInvitation(toUser: String!, roomId: String!): Invitation
+        }
+        type Subscription @aws_cognito_user_pools {
+          invitationSent: Invitation @aws_subscribe(mutations: ["sendInvitation"])
+        }
+  awsTutorialInvitationGraphQLMutationSendInvitationResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialInvitationGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialInvitationNoneDataSource.Name
+      FieldName: sendInvitation
+      Kind: UNIT
+      RequestMappingTemplate: |
+        ## [Start] Set default values. **
+        #set( $createdAt = $util.time.nowEpochSeconds() )
+        #set( $updatedAt = $util.time.nowEpochSeconds() )
+        ## [End] Set default values. **
+        ## [Start] Determine request authentication mode **
+        #if( $util.isNullOrEmpty($authMode) && !$util.isNull($ctx.identity) && !$util.isNull($ctx.identity.sub) && !$util.isNull($ctx.identity.issuer) && !$util.isNull($ctx.identity.username) && !$util.isNull($ctx.identity.claims) && !$util.isNull($ctx.identity.sourceIp) && !$util.isNull($ctx.identity.defaultAuthStrategy) )
+          #set( $authMode = "userPools" )
+        #end
+        ## [End] Determine request authentication mode **
+        ## [Start] Check authMode and execute owner/group checks **
+        #if( $authMode == "userPools" )
+          ## No Static Group Authorization Rules **
+          ## No Dynamic Group Authorization Rules **
+          ## [Start] Owner Authorization Checks **
+          #set( $isOwnerAuthorized = false )
+          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
+          #if( $util.isString($allowedOwners0) )
+            #if( $allowedOwners0 == $identityValue )
+              #set( $isOwnerAuthorized = true )
+            #end
+          #end
+          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+            #set( $isOwnerAuthorized = true )
+          #end
+          ## [End] Owner Authorization Checks **
+          ## [Start] Throw if unauthorized **
+          #if( !($isStaticGroupAuthorized == true || $isDynamicGroupAuthorized == true || $isOwnerAuthorized == true) )
+            $util.unauthorized()
+          #end
+          ## [End] Throw if unauthorized **
+        #else
+          $util.unauthorized()
+        #end
+        ## [End] Check authMode and execute owner/group checks **
+        #if( $identityValue == $ctx.args.fromUser )
+          $util.error("You are rejecting a friend request to yourself", "InvalidParameter")
+        #end
+        ## @TODO: make sure the friend request exists and the status is sent.
+        {
+          "version": "2018-05-29",
+          "payload": {
+            "toUser": $ctx.args.toUser,
+            "fromUser": $identityValue,
+            "invitationStatus": "sent",
+            "roomId": $ctx.args.roomId,
+            "createdAt": $createdAt,
+            "updatedAt": $updatedAt
+          }
+        }
+        # {
+        #   "version": "2017-02-28",
+        #   "operation": "DeleteItem",
+        #   "key": {
+        #     "toUser": $util.dynamodb.toDynamoDBJson($identityValue),
+        #     "fromUser": $util.dynamodb.toDynamoDBJson($ctx.args.fromUser)
+        #   },
+        #   "condition": {
+        #     "expression": "attribute_exists(toUser) AND attribute_exists(fromUser)"
+        #   }
+        # }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+  awsTutorialInvitationGraphQLSubscriptionInvitationSentResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialInvitationGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialNoneDataSource.Name
+      FieldName: friendRequestSent
+      Kind: UNIT
+      RequestMappingTemplate: |
+        ## [Start] Set default values. **
+        #set( $updatedAt = $util.time.nowEpochSeconds() )
+        ## [End] Set default values. **
+        ## [Start] Determine request authentication mode **
+        #if( $util.isNullOrEmpty($authMode) && !$util.isNull($ctx.identity) && !$util.isNull($ctx.identity.sub) && !$util.isNull($ctx.identity.issuer) && !$util.isNull($ctx.identity.username) && !$util.isNull($ctx.identity.claims) && !$util.isNull($ctx.identity.sourceIp) && !$util.isNull($ctx.identity.defaultAuthStrategy) )
+          #set( $authMode = "userPools" )
+        #end
+        ## [End] Determine request authentication mode **
+        ## [Start] Check authMode and execute owner/group checks **
+        #if( $authMode == "userPools" )
+          ## No Static Group Authorization Rules **
+          ## No Dynamic Group Authorization Rules **
+          ## [Start] Owner Authorization Checks **
+          #set( $isOwnerAuthorized = false )
+          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
+          #if( $util.isString($allowedOwners0) )
+            #if( $allowedOwners0 == $identityValue )
+              #set( $isOwnerAuthorized = true )
+            #end
+          #end
+          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+            #set( $isOwnerAuthorized = true )
+          #end
+          ## [End] Owner Authorization Checks **
+          ## [Start] Throw if unauthorized **
+          #if( !($isStaticGroupAuthorized == true || $isDynamicGroupAuthorized == true || $isOwnerAuthorized == true) )
+            $util.unauthorized()
+          #end
+          ## [End] Throw if unauthorized **
+        #else
+          $util.unauthorized()
+        #end
+        #set($ctx.stash.identityValue = $identityValue)
+        ## [End] Check authMode and execute owner/group checks **
+        ## @TODO: make sure the friend request exists and the status is sent.
+        {
+          "version": "2018-05-29",
+          "payload": null
+        }
+      ResponseMappingTemplate: |
+        $extensions.setSubscriptionFilter({
+          "filterGroup": [
+            {
+              "filters": [
+                {
+                  "fieldName": "toUser",
+                  "operator": "eq",
+                  "value": "${ctx.stash.identityValue}"
+                }
+              ]
+            }
+          ]
+        })
+        $util.toJson($ctx.result)
+      TypeName: Subscription
