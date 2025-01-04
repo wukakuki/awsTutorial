@@ -95,6 +95,9 @@ Resources:
           Protocol: UDP
       EC2InstanceType: c6g.medium
       FleetType: SPOT
+      Locations:
+        - Location: !Ref AWS::Region
+        - Location: us-east-1
       MaxSize: 1
       MinSize: 0
       NewGameSessionProtectionPolicy: NoProtection
@@ -121,6 +124,26 @@ Resources:
       RoutingStrategy:
         FleetId: !Ref awsTutorialFleet
         Type: SIMPLE
+  awsTutorialGameSessionQueue:
+    Type: AWS::GameLift::GameSessionQueue
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - -Queue
+      Destinations:
+        - DestinationArn: !Sub "arn:aws:gamelift:${AWS::Region}:${AWS::AccountId}:alias/${awsTutorialAlias}"
+      PlayerLatencyPolicies:
+        - MaximumIndividualPlayerLatencyMilliseconds: 500
+          PolicyDurationSeconds: 30
+      PriorityConfiguration:
+        PriorityOrder: 
+          - LATENCY
+          - COST
+      TimeoutInSeconds: 60
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
 Metadata:
   AWS::Composer::Groups:
     Group1:
@@ -135,3 +158,8 @@ Outputs:
     Value: !Ref awsTutorialAlias
     Export:
       Name: !Sub 'awsTutorialAlias'
+  awsTutorialGameSessionQueueName:
+    Description: GameLift Game Session Queue Name
+    Value: !GetAtt awsTutorialGameSessionQueue.Name
+    Export:
+      Name: !Sub 'awsTutorialGameSessionQueueName'

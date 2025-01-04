@@ -19,115 +19,25 @@ Parameters:
       provide authentication for graphql api
     Type: String
 Resources:
-  # awsTutorialInvitationDynamoDBTable:
-  #   Type: AWS::DynamoDB::Table
-  #   Properties:
-  #     TableName: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _Invitation_DynamoDB_Table
-  #     AttributeDefinitions:
-  #       - AttributeName: toUser
-  #         AttributeType: S
-  #       - AttributeName: fromUser
-  #         AttributeType: S
-  #       - AttributeName: invitationStatus
-  #         AttributeType: S
-  #       - AttributeName: roomId
-  #         AttributeType: S
-  #       - AttributeName: createdAt
-  #         AttributeType: N
-  #       - AttributeName: updatedAt
-  #         AttributeType: N
-  #     BillingMode: PAY_PER_REQUEST
-  #     DeletionProtectionEnabled: false
-  #     OnDemandThroughput:
-  #       MaxReadRequestUnits: 1
-  #       MaxWriteRequestUnits: 1
-  #     TableClass: STANDARD
-  #     KeySchema:
-  #       - AttributeName: fromUser
-  #         KeyType: HASH
-  #       - AttributeName: createdAt
-  #         KeyType: RANGE
-  #     Tags:
-  #       - Key: Usage
-  #         Value: Youtube Streamer
-  # awsTutorialInvitationGraphQLApi:
-  #   Type: AWS::AppSync::GraphQLApi
-  #   Properties:
-  #     Name: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - Invitation_GraphQL_API
-  #     ApiType: GRAPHQL
-  #     AuthenticationType: AMAZON_COGNITO_USER_POOLS
-  #     IntrospectionConfig: ENABLED
-  #     UserPoolConfig:
-  #       AppIdClientRegex: !Ref CognitoUserPoolClient
-  #       AwsRegion: !Ref AWS::Region
-  #       DefaultAction: ALLOW
-  #       UserPoolId: !Ref CognitoUserPool
-  #     Tags:
-  #       - Key: Usage
-  #         Value: Youtube Streamer
-  #     Visibility: GLOBAL
-  # awsTutorialInvitationDataSourceRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     RoleName: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _Invitation_DataSource_Role
-  #     Description: Role for AWS Graphql Api Invitation Data Source
-  #     AssumeRolePolicyDocument:
-  #       Version: '2012-10-17'
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service: appsync.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Policies:
-  #       - PolicyName: !Join
-  #           - ''
-  #           - - !Ref ResourceNamePrefix
-  #             - _Invitation_DataSource_Policy
-  #         PolicyDocument:
-  #           Version: '2012-10-17'
-  #           Statement:
-  #             - Sid: InvitationDataSourcePolicy
-  #               Effect: Allow
-  #               Action:
-  #                 - dynamodb:DeleteItem
-  #                 - dynamodb:GetItem
-  #                 - dynamodb:PutItem
-  #                 - dynamodb:Query
-  #                 - dynamodb:Scan
-  #                 - dynamodb:UpdateItem
-  #               Resource:
-  #                 - !GetAtt awsTutorialInvitationDynamoDBTable.Arn
-  #                 - !Join
-  #                   - ''
-  #                   - - !GetAtt awsTutorialInvitationDynamoDBTable.Arn
-  #                     - /*
-  #     Tags:
-  #       - Key: Usage
-  #         Value: Youtube Streamer
-  # awsTutorialInvitationDataSource:
-  #   Type: AWS::AppSync::DataSource
-  #   Properties:
-  #     Name: !Join
-  #       - ''
-  #       - - !Ref ResourceNamePrefix
-  #         - _Invitation_DataSource
-  #     ApiId: !GetAtt awsTutorialInvitationGraphQLApi.ApiId
-  #     Description: Connect graphql api with Invitation data table
-  #     DynamoDBConfig:
-  #       AwsRegion: !Ref AWS::Region
-  #       TableName: !Ref awsTutorialInvitationDynamoDBTable
-  #     ServiceRoleArn: !GetAtt awsTutorialInvitationDataSourceRole.Arn
-  #     Type: AMAZON_DYNAMODB
+  awsTutorialInvitationGraphQLApi:
+    Type: AWS::AppSync::GraphQLApi
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - Invitation_GraphQL_API
+      ApiType: GRAPHQL
+      AuthenticationType: AMAZON_COGNITO_USER_POOLS
+      IntrospectionConfig: ENABLED
+      UserPoolConfig:
+        AppIdClientRegex: !Ref CognitoUserPoolClient
+        AwsRegion: !Ref AWS::Region
+        DefaultAction: ALLOW
+        UserPoolId: !Ref CognitoUserPool
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+      Visibility: GLOBAL
   awsTutorialInvitationNoneDataSource:
     Type: AWS::AppSync::DataSource
     Properties:
@@ -141,9 +51,10 @@ Resources:
   awsTutorialInvitationGraphQLSchema:
     Type: AWS::AppSync::GraphQLSchema
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialInvitationGraphQLApi.ApiId
       Definition: |
         schema @aws_cognito_user_pools {
+          query: Query
           mutation: Mutation
           subscription: Subscription
         }
@@ -154,6 +65,8 @@ Resources:
           roomId: String!
           createdAt: Int
           updatedAt: Int
+        }
+        type Query @aws_cognito_user_pools {
         }
         type Mutation @aws_cognito_user_pools {
           sendInvitation(toUser: String!, roomId: String!): Invitation
@@ -212,25 +125,14 @@ Resources:
         {
           "version": "2018-05-29",
           "payload": {
-            "toUser": $ctx.args.toUser,
-            "fromUser": $identityValue,
+            "fromUser": "${identityValue}",
+            "toUser": "${ctx.args.toUser}",
             "invitationStatus": "sent",
-            "roomId": $ctx.args.roomId,
-            "createdAt": $createdAt,
-            "updatedAt": $updatedAt
+            "roomId": "${ctx.args.roomId}",
+            "createdAt": "${createdAt}",
+            "updatedAt": "${updatedAt}"
           }
         }
-        # {
-        #   "version": "2017-02-28",
-        #   "operation": "DeleteItem",
-        #   "key": {
-        #     "toUser": $util.dynamodb.toDynamoDBJson($identityValue),
-        #     "fromUser": $util.dynamodb.toDynamoDBJson($ctx.args.fromUser)
-        #   },
-        #   "condition": {
-        #     "expression": "attribute_exists(toUser) AND attribute_exists(fromUser)"
-        #   }
-        # }
       ResponseMappingTemplate: |
         #if($ctx.error)
           $util.error($ctx.error.message, $ctx.error.type)
@@ -242,8 +144,8 @@ Resources:
     Type: AWS::AppSync::Resolver
     Properties:
       ApiId: !GetAtt awsTutorialInvitationGraphQLApi.ApiId
-      DataSourceName: !GetAtt awsTutorialNoneDataSource.Name
-      FieldName: friendRequestSent
+      DataSourceName: !GetAtt awsTutorialInvitationNoneDataSource.Name
+      FieldName: invitationSent
       Kind: UNIT
       RequestMappingTemplate: |
         ## [Start] Set default values. **
@@ -303,3 +205,19 @@ Resources:
         })
         $util.toJson($ctx.result)
       TypeName: Subscription
+Outputs:
+  awsTutorialInvitationSystemGraphQLHost:
+    Description: GraphQL Host
+    Value: !GetAtt awsTutorialInvitationGraphQLApi.GraphQLDns
+    Export:
+      Name: !Sub 'awsTutorialInvitationSystemGraphQLHost'
+  awsTutorialInvitationSystemGraphQLEndpoint:
+    Description: GraphQL Endpoint
+    Value: !GetAtt awsTutorialInvitationGraphQLApi.GraphQLUrl
+    Export:
+      Name: !Sub 'awsTutorialInvitationSystemGraphQLEndpoint'
+  awsTutorialInvitationSystemGraphQLRealtimeEndpoint:
+    Description: GraphQL realtime Endpoint
+    Value: !GetAtt awsTutorialInvitationGraphQLApi.RealtimeUrl
+    Export:
+      Name: !Sub 'awsTutorialInvitationSystemGraphQLRealtimeEndpoint'

@@ -15,10 +15,17 @@ Parameters:
     Description: Url of the cloud formation template for friend system.
     Type: String
     Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_FriendSystem.yaml
-  # InvitationSystemPartTemplateUrl:
-  #   Description: Url of the cloud formation template for websocket mmo.
-  #   Type: String
-  #   Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_InvitationSystem.yaml
+  InvitationSystemPartTemplateUrl:
+    Description: Url of the cloud formation template for websocket mmo.
+    Type: String
+    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_InvitationSystem.yaml
+  DeployWebSocketMMO:
+    Description: Deploy WebSocketMMO?
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
   WebSocketMMOPartTemplateUrl:
     Description: Url of the cloud formation template for websocket mmo.
     Type: String
@@ -49,12 +56,15 @@ Parameters:
   GameServerBuildBucket:
     Description: S3 bucket for storing game server build files.
     Type: String
+    Default: awstutorial-builds-ap-northeast-2
   GameServerBuildKey:
     Description: The key of the game server build file.
     Type: String
+    Default: LinuxArm64Server.zip
   GameServerBuildObjectVersion:
     Description: The version of the game server build file.
     Type: String
+    Default: R6jpIEnLxfTeSiMJ1SDAaP7jsWS0VMSj
   GameServerBuildServerSdkVersion:
     Description: The server sdk version of the game server build file.
     Type: String
@@ -62,11 +72,15 @@ Parameters:
   GameServerBuildVersion:
     Description: Version of the game server build.
     Type: String
+    Default: 1.0.0
   GameServerLaunchPath:
     Description: The launch path of the game server.
     Type: String
     Default: awsTutorial/Binaries/LinuxArm64/awsTutorialServer
 Conditions:
+  ShouldDeployWebSocketMMO: !Equals
+    - !Ref DeployWebSocketMMO
+    - 'true'
   ShouldDeployGameServer: !Equals
     - !Ref DeployGameServer
     - 'true'
@@ -109,21 +123,22 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
-  # awsTutorialInvitationSystemStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   DependsOn: awsTutorialUGCStack
-  #   Properties:
-  #     TemplateURL: !Ref InvitationSystemPartTemplateUrl
-  #     Parameters:
-  #       ResourceNamePrefix: !Ref ResourceNamePrefix
-  #       CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-  #       CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
-  #       CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
-  #     Tags:
-  #       - Key: Usage
-  #         Value: Youtube Streamer
+  awsTutorialInvitationSystemStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: awsTutorialUGCStack
+    Properties:
+      TemplateURL: !Ref InvitationSystemPartTemplateUrl
+      Parameters:
+        ResourceNamePrefix: !Ref ResourceNamePrefix
+        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
   awsTutorialWebSocketMMOStack:
     Type: AWS::CloudFormation::Stack
+    Condition: ShouldDeployWebSocketMMO
     DependsOn: awsTutorialUGCStack
     Properties:
       TemplateURL: !Ref WebSocketMMOPartTemplateUrl
@@ -146,6 +161,9 @@ Outputs:
   awsTutorialCognitoUserPoolId:
     Description: Cognito User Pool ID
     Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+  awsTutorialCognitoUserPoolClient:
+    Description: Link to Cognito User Pool Client
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cognito/v2/idp/user-pools/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId}/applications/app-clients/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId}/quick-setup-guide?region=${AWS::Region}"
   awsTutorialCognitoUserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
@@ -153,21 +171,35 @@ Outputs:
     Condition: ShouldDeployGameServer
     Description: GameLift Alias ID
     Value: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
+  awsTutorialGameSessionQueueName:
+    Condition: ShouldDeployGameServer
+    Description: GameLift Game Session Queue Name
+    Value: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
   awsTutorialUserGeneratedContentS3Bucket:
     Description: User Generated Content S3 Bucket
     Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialUserGeneratedContentS3Bucket
   awsTutorialLogGroupName:
     Description: Log Group Name
     Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialLogGroupName
-  awsTutorialGraphQLHost:
+  awsTutorialFriendSystemGraphQLHost:
     Description: GraphQL Host
-    Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialGraphQLHost
-  awsTutorialGraphQLEndpoint:
+    Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLHost
+  awsTutorialFriendSystemGraphQLEndpoint:
     Description: GraphQL Endpoint
-    Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialGraphQLEndpoint
-  awsTutorialGraphQLRealtimeEndpoint:
+    Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLEndpoint
+  awsTutorialFriendSystemGraphQLRealtimeEndpoint:
     Description: GraphQL realtime Endpoint
-    Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialGraphQLRealtimeEndpoint
+    Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLRealtimeEndpoint
+  awsTutorialInvitationSystemGraphQLHost:
+    Description: GraphQL Host
+    Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLHost
+  awsTutorialInvitationSystemGraphQLEndpoint:
+    Description: GraphQL Endpoint
+    Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLEndpoint
+  awsTutorialInvitationSystemGraphQLRealtimeEndpoint:
+    Description: GraphQL realtime Endpoint
+    Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLRealtimeEndpoint
   awsTutorialWebSocketMMODNSName:
+    Condition: ShouldDeployWebSocketMMO
     Description: The DNSName of the WebSocket MMO Server
     Value: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName

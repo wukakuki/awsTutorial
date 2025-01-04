@@ -490,13 +490,13 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
-  awsTutorialGraphQLApi:
+  awsTutorialFriendSystemGraphQLApi:
     Type: AWS::AppSync::GraphQLApi
     Properties:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - _GraphQL_API
+          - Friend_GraphQL_API
       ApiType: GRAPHQL
       AuthenticationType: AMAZON_COGNITO_USER_POOLS
       IntrospectionConfig: ENABLED
@@ -723,7 +723,7 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _SearchUsers_DataSource
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       Description: Connect graphql api with search users function
       LambdaConfig:
         LambdaFunctionArn: !GetAtt awsTutorialSearchUsersLambdaFunction.Arn
@@ -736,7 +736,7 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _GetUser_DataSource
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       Description: Connect graphql api with Get user function
       LambdaConfig:
         LambdaFunctionArn: !GetAtt awsTutorialGetUserLambdaFunction.Arn
@@ -749,7 +749,7 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _GetFriendStatus_DataSource
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       Description: Connect graphql api with get friend status function
       LambdaConfig:
         LambdaFunctionArn: !GetAtt awsTutorialGetFriendStatusLambdaFunction.Arn
@@ -762,7 +762,7 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _ListPendingFriendRequests_DataSource
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       Description: Connect graphql api with list pending friend requests function
       LambdaConfig:
         LambdaFunctionArn: !GetAtt awsTutorialListPendingFriendRequestsLambdaFunction.Arn
@@ -775,7 +775,7 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _ListFriends_DataSource
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       Description: Connect graphql api with list friends function
       LambdaConfig:
         LambdaFunctionArn: !GetAtt awsTutorialListFriendsLambdaFunction.Arn
@@ -788,7 +788,7 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _FriendList_DataSource
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       Description: Connect graphql api with Friend List data table
       DynamoDBConfig:
         AwsRegion: !Ref AWS::Region
@@ -802,13 +802,13 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _None_DataSource
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       Description: Data source for subscriptions
       Type: NONE
-  awsTutorialGraphQLSchema:
+  awsTutorialFriendSystemGraphQLSchema:
     Type: AWS::AppSync::GraphQLSchema
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       Definition: |
         schema @aws_cognito_user_pools {
           query: Query
@@ -851,10 +851,10 @@ Resources:
           friendRequestRejected(toUser: String): Friend @aws_subscribe(mutations: ["rejectFriendRequest"])
           friendRequestDeleted(toUser: String): Friend @aws_subscribe(mutations: ["deleteFriend"])
         }
-  awsTutorialGraphQLQueryGetUserRequestsResolver:
+  awsTutorialFriendSystemGraphQLQueryGetUserRequestsResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialGetUserDataSource.Name
       FieldName: getUser
       Kind: UNIT
@@ -907,10 +907,10 @@ Resources:
           $utils.toJson($ctx.result)
         #end
       TypeName: Query
-  awsTutorialGraphQLQueryListPendingFriendRequestsResolver:
+  awsTutorialFriendSystemGraphQLQueryListPendingFriendRequestsResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialListPendingFriendRequestsDataSource.Name
       FieldName: listPendingFriendRequests
       Kind: UNIT
@@ -964,10 +964,10 @@ Resources:
           $utils.toJson($ctx.result)
         #end
       TypeName: Query
-  awsTutorialGraphQLQueryListFriendsResolver:
+  awsTutorialFriendSystemGraphQLQueryListFriendsResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialListFriendsDataSource.Name
       FieldName: listFriends
       Kind: UNIT
@@ -1021,14 +1021,14 @@ Resources:
           $utils.toJson($ctx.result)
         #end
       TypeName: Query
-  awsTutorialGraphQLMutationSearchUserFunction:
+  awsTutorialFriendSystemGraphQLMutationSearchUserFunction:
     Type: AWS::AppSync::FunctionConfiguration
     Properties:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
           - _Search_User_Function
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialSearchUsersDataSource.Name
       Description: Search user
       FunctionVersion: '2018-05-29'
@@ -1065,14 +1065,14 @@ Resources:
           #end
         #end
         $util.toJson($result)
-  awsTutorialGraphQLMutationGetFriendStatusFunction:
+  awsTutorialFriendSystemGraphQLMutationGetFriendStatusFunction:
     Type: AWS::AppSync::FunctionConfiguration
     Properties:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
           - _GetFriendStatus_Function
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialGetFriendStatusDataSource.Name
       Description: Get Friend Status
       FunctionVersion: '2018-05-29'
@@ -1096,14 +1096,14 @@ Resources:
           #set($result = $ctx.result)
         #end
         $util.toJson($result)
-  awsTutorialGraphQLMutationCreateFriendRequestFunction:
+  awsTutorialFriendSystemGraphQLMutationCreateFriendRequestFunction:
     Type: AWS::AppSync::FunctionConfiguration
     Properties:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
           - _Create_Friend_Function
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialFriendListDataSource.Name
       Description: Create friend request
       FunctionVersion: '2018-05-29'
@@ -1136,17 +1136,17 @@ Resources:
         #else
           $utils.toJson($ctx.result)
         #end
-  awsTutorialGraphQLMutationSendFriendRequestResolver:
+  awsTutorialFriendSystemGraphQLMutationSendFriendRequestResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       FieldName: sendFriendRequest
       Kind: PIPELINE
       PipelineConfig:
         Functions:
-          - !GetAtt awsTutorialGraphQLMutationSearchUserFunction.FunctionId
-          - !GetAtt awsTutorialGraphQLMutationGetFriendStatusFunction.FunctionId
-          - !GetAtt awsTutorialGraphQLMutationCreateFriendRequestFunction.FunctionId
+          - !GetAtt awsTutorialFriendSystemGraphQLMutationSearchUserFunction.FunctionId
+          - !GetAtt awsTutorialFriendSystemGraphQLMutationGetFriendStatusFunction.FunctionId
+          - !GetAtt awsTutorialFriendSystemGraphQLMutationCreateFriendRequestFunction.FunctionId
       RequestMappingTemplate: |
         ## [Start] Set default values. **
         #set( $createdAt = $util.time.nowEpochSeconds() )
@@ -1200,10 +1200,10 @@ Resources:
           $util.toJson($ctx.prev.result)
         #end
       TypeName: Mutation
-  awsTutorialGraphQLMutationAcceptFriendRequestResolver:
+  awsTutorialFriendSystemGraphQLMutationAcceptFriendRequestResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialFriendListDataSource.Name
       FieldName: acceptFriendRequest
       Kind: UNIT
@@ -1276,10 +1276,10 @@ Resources:
           $utils.toJson($ctx.result)
         #end
       TypeName: Mutation
-  awsTutorialGraphQLMutationRejectFriendRequestResolver:
+  awsTutorialFriendSystemGraphQLMutationRejectFriendRequestResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialFriendListDataSource.Name
       FieldName: rejectFriendRequest
       Kind: UNIT
@@ -1341,14 +1341,14 @@ Resources:
           $utils.toJson($ctx.result)
         #end
       TypeName: Mutation
-  awsTutorialGraphQLMutationDeleteFriendRequestFunction:
+  awsTutorialFriendSystemGraphQLMutationDeleteFriendRequestFunction:
     Type: AWS::AppSync::FunctionConfiguration
     Properties:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
           - _Delete_Friend_Function
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialFriendListDataSource.Name
       Description: Delete friend request
       FunctionVersion: '2018-05-29'
@@ -1373,16 +1373,16 @@ Resources:
         #else
           $utils.toJson($ctx.result)
         #end
-  awsTutorialGraphQLMutationDeleteFriendRequestResolver:
+  awsTutorialFriendSystemGraphQLMutationDeleteFriendRequestResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       FieldName: deleteFriend
       Kind: PIPELINE
       PipelineConfig:
         Functions:
-          - !GetAtt awsTutorialGraphQLMutationGetFriendStatusFunction.FunctionId
-          - !GetAtt awsTutorialGraphQLMutationDeleteFriendRequestFunction.FunctionId
+          - !GetAtt awsTutorialFriendSystemGraphQLMutationGetFriendStatusFunction.FunctionId
+          - !GetAtt awsTutorialFriendSystemGraphQLMutationDeleteFriendRequestFunction.FunctionId
       RequestMappingTemplate: |
         ## [Start] Set default values. **
         #set( $createdAt = $util.time.nowEpochSeconds() )
@@ -1439,10 +1439,10 @@ Resources:
           $util.toJson($ctx.prev.result)
         #end
       TypeName: Mutation
-  awsTutorialGraphQLSubscriptionFriendRequestSentResolver:
+  awsTutorialFriendSystemGraphQLSubscriptionFriendRequestSentResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialNoneDataSource.Name
       FieldName: friendRequestSent
       Kind: UNIT
@@ -1513,10 +1513,10 @@ Resources:
         })
         $util.toJson($ctx.result)
       TypeName: Subscription
-  awsTutorialGraphQLSubscriptionFriendRequestAcceptedResolver:
+  awsTutorialFriendSystemGraphQLSubscriptionFriendRequestAcceptedResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialNoneDataSource.Name
       FieldName: friendRequestAccepted
       Kind: UNIT
@@ -1595,10 +1595,10 @@ Resources:
         })
         $util.toJson($ctx.result)
       TypeName: Subscription
-  awsTutorialGraphQLSubscriptionFriendRequestRejectedResolver:
+  awsTutorialFriendSystemGraphQLSubscriptionFriendRequestRejectedResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialNoneDataSource.Name
       FieldName: friendRequestRejected
       Kind: UNIT
@@ -1677,10 +1677,10 @@ Resources:
         })
         $util.toJson($ctx.result)
       TypeName: Subscription
-  awsTutorialGraphQLSubscriptionFriendRequestDeletedResolver:
+  awsTutorialFriendSystemGraphQLSubscriptionFriendRequestDeletedResolver:
     Type: AWS::AppSync::Resolver
     Properties:
-      ApiId: !GetAtt awsTutorialGraphQLApi.ApiId
+      ApiId: !GetAtt awsTutorialFriendSystemGraphQLApi.ApiId
       DataSourceName: !GetAtt awsTutorialNoneDataSource.Name
       FieldName: friendRequestDeleted
       Kind: UNIT
@@ -1761,31 +1761,31 @@ Resources:
         $util.toJson($ctx.result)
       TypeName: Subscription
 Outputs:
-  awsTutorialGraphQLHost:
+  awsTutorialFriendSystemGraphQLHost:
     Description: GraphQL Host
-    Value: !GetAtt awsTutorialGraphQLApi.GraphQLDns
+    Value: !GetAtt awsTutorialFriendSystemGraphQLApi.GraphQLDns
     Export:
-      Name: !Sub 'awsTutorialGraphQLHost'
-  awsTutorialGraphQLEndpoint:
+      Name: !Sub 'awsTutorialFriendSystemGraphQLHost'
+  awsTutorialFriendSystemGraphQLEndpoint:
     Description: GraphQL Endpoint
-    Value: !GetAtt awsTutorialGraphQLApi.GraphQLUrl
+    Value: !GetAtt awsTutorialFriendSystemGraphQLApi.GraphQLUrl
     Export:
-      Name: !Sub 'awsTutorialGraphQLEndpoint'
-  awsTutorialGraphQLRealtimeEndpoint:
+      Name: !Sub 'awsTutorialFriendSystemGraphQLEndpoint'
+  awsTutorialFriendSystemGraphQLRealtimeEndpoint:
     Description: GraphQL realtime Endpoint
-    Value: !GetAtt awsTutorialGraphQLApi.RealtimeUrl
+    Value: !GetAtt awsTutorialFriendSystemGraphQLApi.RealtimeUrl
     Export:
-      Name: !Sub 'awsTutorialGraphQLRealtimeEndpoint'
+      Name: !Sub 'awsTutorialFriendSystemGraphQLRealtimeEndpoint'
 Metadata:
   AWS::Composer::Groups:
     Group:
       Label: Friend System
       Members:
-        - awsTutorialGraphQLApi
-        - awsTutorialGraphQLMutationSearchUserFunction
-        - awsTutorialGraphQLMutationGetFriendStatusFunction
-        - awsTutorialGraphQLMutationDeleteFriendRequestFunction
-        - awsTutorialGraphQLMutationCreateFriendRequestFunction
+        - awsTutorialFriendSystemGraphQLApi
+        - awsTutorialFriendSystemGraphQLMutationSearchUserFunction
+        - awsTutorialFriendSystemGraphQLMutationGetFriendStatusFunction
+        - awsTutorialFriendSystemGraphQLMutationDeleteFriendRequestFunction
+        - awsTutorialFriendSystemGraphQLMutationCreateFriendRequestFunction
         - awsTutorialGetUserLambdaRole
         - awsTutorialSearchUsersLambdaRole
         - awsTutorialFriendListLambdaFunctionRole

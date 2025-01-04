@@ -66,7 +66,12 @@ Resources:
                 Action:
                   - gamelift:SearchGameSessions
                   - gamelift:CreateGameSession
+                  - gamelift:DescribeGameSessions
                   - gamelift:CreatePlayerSession
+                  # overly permissive
+                  - gamelift:StartGameSessionPlacement
+                  - gamelift:StopGameSessionPlacement
+                  - gamelift:DescribeGameSessionPlacement
                 Resource: '*'
               - Sid: UserGeneratedContent
                 Effect: Allow

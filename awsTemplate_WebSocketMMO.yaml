@@ -10,7 +10,7 @@ Mappings:
     ap-northeast-1:
       AMI: ami-09b4ccdef9ed53ae6
     ap-northeast-2:
-      AMI: ami-0e09264f1f818c7f6
+      AMI: ami-0fb2672536f4a714e
     ap-northeast-3:
       AMI: ami-00f213bbfd0f04352
     ap-southeast-1:
