@@ -244,7 +244,11 @@ Resources:
           RequireSymbols: true
           RequireUppercase: true
       Schema:
-        - Name: avatar
+        - Name: custom:avatar
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: custom:weapon
           AttributeDataType: String
           Mutable: true
           Required: false
@@ -291,10 +295,12 @@ Resources:
         - email
         - email_verified
         - custom:avatar
+        - custom:weapon
       WriteAttributes:
         - email
         - preferred_username
         - custom:avatar
+        - custom:weapon
       UserPoolId: !Ref awsTutorialCognitoUserPool
 Metadata:
   AWS::Composer::Groups:
