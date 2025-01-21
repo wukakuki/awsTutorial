@@ -4,43 +4,43 @@ Description: awsTutorial(WebSocket MMO part)
 Mappings:
   AMIRegionMappings:
     ap-east-1:
-      AMI: ami-08d441263db50e01b
+      AMI: ami-0cd0f879365162d2b
     ap-south-1:
-      AMI: ami-092d87126961ad5c1
+      AMI: ami-048ef064d1acc313a
     ap-northeast-1:
-      AMI: ami-09b4ccdef9ed53ae6
+      AMI: ami-0789e48e7c38156d0
     ap-northeast-2:
-      AMI: ami-002a4d0c6f41791fe
+      AMI: ami-0a58cb3745bc84873
     ap-northeast-3:
-      AMI: ami-00f213bbfd0f04352
+      AMI: ami-09e9c946f496a61f0
     ap-southeast-1:
-      AMI: ami-02f044ca3eb2459d9
+      AMI: ami-097dcb6d05bcae11a
     ap-southeast-2:
-      AMI: ami-02895609e135cefae
+      AMI: ami-0468600aa5e323084
     ca-central-1:
-      AMI: ami-0552c316d95f571c2
+      AMI: ami-0a9e8701ec5807d7b
     eu-central-1:
-      AMI: ami-0cc678fe7a307f26f
+      AMI: ami-067aace4b839f3f7e
     eu-west-1:
-      AMI: ami-0c9e65895a5d32313
+      AMI: ami-078e79f1237352442
     eu-west-2:
-      AMI: ami-007b469c9fbdefeef
+      AMI: ami-06f48e76720fbb42e
     eu-west-3:
-      AMI: ami-0cd60c47f03b16d54
+      AMI: ami-01a184aaf686b4a44
     eu-north-1:
-      AMI: ami-071b1217092df03ef
+      AMI: ami-038a66d61ba2ae053
     me-south-1:
-      AMI: ami-09fb7a97ce5eb2996
+      AMI: ami-077cd03394f530467
     sa-east-1:
-      AMI: ami-0581e3c7936e16eeb
+      AMI: ami-00744511e5d14fa97
     us-east-1:
-      AMI: ami-0eb47cccd5762487a
+      AMI: ami-01d3c6c19c2f7ed1a
     us-east-2:
-      AMI: ami-0e382f9c1ca897760
+      AMI: ami-05ac2dd6e5d4ebf5e
     us-west-1:
-      AMI: ami-01fc00fd68482db4a
+      AMI: ami-02179e65c9cbf65a6
     us-west-2:
-      AMI: ami-00325eb31f293a0cc
+      AMI: ami-08eeaab1863e7636e
 Parameters:
   ResourceNamePrefix:
     Description: Prefix of resource name

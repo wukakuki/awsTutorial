@@ -244,11 +244,11 @@ Resources:
           RequireSymbols: true
           RequireUppercase: true
       Schema:
-        - Name: custom:avatar
+        - Name: avatar
           AttributeDataType: String
           Mutable: true
           Required: false
-        - Name: custom:weapon
+        - Name: weapon
           AttributeDataType: String
           Mutable: true
           Required: false
