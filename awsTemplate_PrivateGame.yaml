@@ -1,0 +1,513 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: awsTutorial(Private Game part)
+Parameters:
+  ResourceNamePrefix:
+    Description: Prefix of resource name
+    Default: awstutorial
+    Type: String
+  CognitoUserPool:
+    Description: Cognito User Pool id of the cognito user pool client which provide
+      authentication for graphql api
+    Type: String
+  CognitoUserPoolArn:
+    Description: Cognito User Pool id of the cognito user pool client which provide
+      authentication for graphql api
+    Type: String
+  CognitoUserPoolClient:
+    Description: Cognito User Pool client id of the cognito user pool client which
+      provide authentication for graphql api
+    Type: String
+  GameLiftAliasId:
+    Description: GameLift Alias Id of the GameLift Alias which is ued to create private game session 
+    Type: String
+  GameLiftGameSessionMaxPlayerNum:
+    Description: GameLift Alias Id of the GameLift Alias which is ued to create private game session 
+    Type: Number
+    Default: 20
+Resources:
+  awsTutorialPrivateGameLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _PrivateGame_Lambda_Function_Role
+      Description: Role for AWS Lambda Functions GameLift Private Game
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _PrivateGame_Lambda_Function_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: PrivateGameLambdaFunctionPolicy
+                Effect: Allow
+                Action:
+                  - gamelift:CreateGameSession
+                  - gamelift:CreatePlayerSession
+                  - gamelift:DescribeGameSessions
+                  - gamelift:CreatePlayerSession
+                Resource:
+                  - '*'
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialCreatePrivateGameLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _CreatePrivateGame_Lambda
+      Description: Lambda function Create private game
+      Architectures: arm64
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+          import string
+          import random
+          import datetime
+          import uuid
+          def generate_random_password(length=8):
+            characters = string.ascii_uppercase + string.digits  # Uppercase letters and digits
+            return ''.join(random.choices(characters, k=length))
+          
+          def lambda_handler(event, context):
+              aliasId = os.environ['ALIAS_ID']
+              maxPlayerNum = os.environ['MAX_PLAYER_NUM']
+              gamelift = boto3.client('gamelift')
+              try:
+                while True:
+                  password = generate_random_password()
+                  # generate a uuid to prevent duplicated password
+                  uuid = str(uuid.uuid4()) 
+                  request_parameters = {
+                    'AliasId': aliasId,
+                    'MaximumPlayerSessionCount': maxPlayerNum,
+                    'Name': uuid,
+                    'GameProperties': [
+                      {
+                        'Key': 'Password',
+                        'Value': password
+                      },
+                      {
+                        'Key': 'CreatorId',
+                        'Value': event['username']
+                      }
+                    ] + event.get('gameProperties', []),
+                    'CreatorId': event['username'],
+                    'IdempotencyToken': password,
+                    'GameSessionData': event.get('gameData', '')
+                  }
+                  response = gamelift.create_game_session(**request_parameters)
+
+                  if response['GameSession']:
+                    if response['GameSession']['Name'] is uuid:
+                      output = {
+                        'password': password,
+                        'gameSessionId': response['GameSession']['GameSessionId'],
+                        'status': response['GameSession']['Status']
+                      }
+                      break
+
+                if response['GameSession']['Status'] in ['TERMINATED', 'TERMINATING', 'ERROR']:
+                  raise Exception(f"Failed to create private game: {response['GameSession']['StatusReason']}")
+                
+                while output['status'] is 'ACTIVATING':
+                  request_parameters = {
+                    'GameSessionId': output['gameSessionId'],
+                    'Limit': 1
+                  }
+                  response = gamelift.describe_game_sessions(**request_parameters)
+
+                  if response['GameSessions'] && len(response['GameSessions']) == 1:
+                    output['status'] = response['GameSessions'][0]['Status']
+
+                  if response['GameSessions'][0]['Status'] in ['TERMINATED', 'TERMINATING', 'ERROR']:
+                    raise Exception(f"Failed to create private game: {response['GameSession']['StatusReason']}")
+                  
+                request_parameters = {
+                  'GameSessionId': output['gameSessionId'],
+                  'PlayerId': event['username'],
+                  'PlayerData': event.get('playerData', '')
+                }
+                response = gamelift.create_player_session(**request_parameters)
+
+                if response['PlayerSession']:
+                  output.update({
+                    'playerSessionId': response['PlayerSession']['PlayerSessionId'],
+                    'playerId': response['PlayerSession']['PlayerId'],
+                    'status': response['PlayerSession']['Status'],
+                    'ipAddress': response['PlayerSession']['IpAddress'],
+                    'dnsName': response['PlayerSession']['DnsName'],
+                    'port': response['PlayerSession']['Port'],
+                    'playerData': response['PlayerSession']['PlayerData']
+                  })
+                return output
+              except Exception as e:
+                raise Exception(f"Error processing request: {str(e)}")
+      Environment:
+        Variables:
+          ALIAS_ID: !Ref GameLiftAliasId
+          MAX_PLAYER_NUM: !Ref GameLiftGameSessionMaxPlayerNum
+      Handler: index.lambda_handler
+      # LoggingConfig:
+      #   LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialPrivateGameLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialJoinPrivateGameLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _JoinPrivateGame_Lambda
+      Description: Lambda function Join private game
+      Architectures: arm64
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+          import re
+          def lambda_handler(event, context):
+              aliasId = os.environ['ALIAS_ID']
+              gamelift = boto3.client('gamelift')
+              password_pattern = re.compile("^\w{8}$")
+              if password_pattern.match(event.get('password', '')):
+                raise Exception(f"password should be 8-digit")
+
+              try:
+                request_parameters = {
+                  'AliasId': aliasId,
+                  'FilterExpression': 'gameSessionProperties.Password = ' + event['password'],
+                  'Limit': 1
+                }
+                response = gamelift.search_game_sessions(**request_parameters)
+
+                if 'GameSessions' not in response || len(response['GameSessions']) == 0:
+                  raise Exception(f"The private game doesn't exist")
+
+                game_session_id = response['GameSessions'][0]['GameSessionId']
+                game_session_status = response['GameSessions'][0]['Status']
+                
+                if game_session_status in ['TERMINATED', 'TERMINATING', 'ERROR']
+                  raise Exception(f"The private game is terminated or failed: {response['GameSession']['StatusReason']}")
+                
+                while game_session_status is 'ACTIVATING':
+                  request_parameters = {
+                    'GameSessionId': game_session_id,
+                    'Limit': 1
+                  }
+                  response = gamelift.describe_game_sessions(**request_parameters)
+
+                  if response['GameSessions'] && len(response['GameSessions']) == 1:
+                    game_session_status = response['GameSessions'][0]['Status']
+
+                  if game_session_status in ['TERMINATED', 'TERMINATING', 'ERROR']:
+                    raise Exception(f"The private game is terminated or failed: {response['GameSession']['StatusReason']}")
+
+                request_parameters = {
+                  'GameSessionId': game_session_id,
+                  'PlayerId': event['username'],
+                  'PlayerData': event.get('player_data', '')
+                }
+                response = gamelift.create_player_session(**request_parameters)
+
+                if response['PlayerSession']:
+                  output = {
+                    'playerSessionId': response['PlayerSession']['PlayerSessionId'],
+                    'playerId': response['PlayerSession']['PlayerId'],
+                    'status': response['PlayerSession']['Status'],
+                    'ipAddress': response['PlayerSession']['IpAddress'],
+                    'dnsName': response['PlayerSession']['DnsName'],
+                    'port': response['PlayerSession']['Port'],
+                    'playerData': response['PlayerSession']['PlayerData'],
+                  }
+                  return output
+                return {}
+              except Exception as e:
+                raise Exception(f"Error processing request: {str(e)}")
+      Environment:
+        Variables:
+          ALIAS_ID: !Ref GameLiftAliasId
+      Handler: index.lambda_handler
+      # LoggingConfig:
+      #   LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialPrivateGameLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialPrivateGameGraphQLApi:
+    Type: AWS::AppSync::GraphQLApi
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - PrivateGame_GraphQL_API
+      ApiType: GRAPHQL
+      AuthenticationType: AMAZON_COGNITO_USER_POOLS
+      IntrospectionConfig: ENABLED
+      UserPoolConfig:
+        AppIdClientRegex: !Ref CognitoUserPoolClient
+        AwsRegion: !Ref AWS::Region
+        DefaultAction: ALLOW
+        UserPoolId: !Ref CognitoUserPool
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+      Visibility: GLOBAL
+  awsTutorialPrivateGameLambdaFunctionDataSourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _PrivateGame_DataSource_Role
+      Description: Role for AWS Graphql Api Private Game Data Source
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _PrivateGame_DataSource_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: PrivateGameDataSourcePolicy
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt awsTutorialCreatePrivateGameLambdaFunction.Arn
+                  - !GetAtt awsTutorialJoinPrivateGameLambdaFunction.Arn
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialCreatePrivateGameDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _CreatePrivateGame_DataSource
+      ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
+      Description: Data source for create private game
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt awsTutorialCreatePrivateGameLambdaFunction.Arn
+      ServiceRoleArn: !GetAtt awsTutorialPrivateGameLambdaFunctionDataSourceRole.Arn
+      Type: AWS_LAMBDA
+  awsTutorialJoinPrivateGameDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _JoinPrivateGame_DataSource
+      ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
+      Description: Data source for create private game
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt awsTutorialJoinPrivateGameLambdaFunction.Arn
+      ServiceRoleArn: !GetAtt awsTutorialPrivateGameLambdaFunctionDataSourceRole.Arn
+      Type: AWS_LAMBDA
+  awsTutorialPrivateGameGraphQLSchema:
+    Type: AWS::AppSync::GraphQLSchema
+    Properties:
+      ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
+      Definition: |
+        schema @aws_cognito_user_pools {
+          query: Query
+          mutation: Mutation
+          subscription: Subscription
+        }
+        type GameProperties @aws_cognito_user_pools {
+          Key: String!
+          Value: String!
+        }
+        type CreatePrivateGameResult @aws_cognito_user_pools {
+          password: String!
+          gameSessionId: String!
+          playerSessionId: String!
+          playerId: String!
+          status: String!
+          ipAddress: String!
+          dnsName: String!
+          port: Int!
+          playerData: String!
+        }
+        type JoinPrivateGameResult @aws_cognito_user_pools {
+          playerSessionId: String!
+          playerId: String!
+          status: String!
+          ipAddress: String!
+          dnsName: String!
+          port: Int!
+          playerData: String!
+        }
+        type Query @aws_cognito_user_pools {
+        }
+        type Mutation @aws_cognito_user_pools {
+          CreatePrivateGame(gameData: String, gameProperties: [GameProperties], playerData: String): CreatePrivateGameResult
+          JoinPrivateGame(password: String!, playerData: String): JoinPrivateGameResult
+        }
+        type Subscription @aws_cognito_user_pools {
+        }
+  awsTutorialPrivateGameGraphQLMutationCreatePrivateGameResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialCreatePrivateGameDataSource.Name
+      FieldName: CreatePrivateGame
+      Kind: UNIT
+      RequestMappingTemplate: |
+        ## [Start] Set default values. **
+        #set( $createdAt = $util.time.nowEpochSeconds() )
+        #set( $updatedAt = $util.time.nowEpochSeconds() )
+        ## [End] Set default values. **
+        ## [Start] Determine request authentication mode **
+        #if( $util.isNullOrEmpty($authMode) && !$util.isNull($ctx.identity) && !$util.isNull($ctx.identity.sub) && !$util.isNull($ctx.identity.issuer) && !$util.isNull($ctx.identity.username) && !$util.isNull($ctx.identity.claims) && !$util.isNull($ctx.identity.sourceIp) && !$util.isNull($ctx.identity.defaultAuthStrategy) )
+          #set( $authMode = "userPools" )
+        #end
+        ## [End] Determine request authentication mode **
+        ## [Start] Check authMode and execute owner/group checks **
+        #if( $authMode == "userPools" )
+          ## No Static Group Authorization Rules **
+          ## No Dynamic Group Authorization Rules **
+          ## [Start] Owner Authorization Checks **
+          #set( $isOwnerAuthorized = false )
+          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
+          #if( $util.isString($allowedOwners0) )
+            #if( $allowedOwners0 == $identityValue )
+              #set( $isOwnerAuthorized = true )
+            #end
+          #end
+          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+            #set( $isOwnerAuthorized = true )
+          #end
+          ## [End] Owner Authorization Checks **
+          ## [Start] Throw if unauthorized **
+          #if( !($isStaticGroupAuthorized == true || $isDynamicGroupAuthorized == true || $isOwnerAuthorized == true) )
+            $util.unauthorized()
+          #end
+          ## [End] Throw if unauthorized **
+        #else
+          $util.unauthorized()
+        #end
+        ## [End] Check authMode and execute owner/group checks **
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "username": "${identityValue}"
+            "gameData": "$ctx.args.gameData",
+            "gameProperties": "$ctx.args.gameProperties",
+            "playerData": "$ctx.args.playerData"
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+  awsTutorialPrivateGameGraphQLMutationJoinPrivateGameResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialJoinPrivateGameDataSource.Name
+      FieldName: JoinPrivateGame
+      Kind: UNIT
+      RequestMappingTemplate: |
+        ## [Start] Set default values. **
+        #set( $createdAt = $util.time.nowEpochSeconds() )
+        #set( $updatedAt = $util.time.nowEpochSeconds() )
+        ## [End] Set default values. **
+        ## [Start] Determine request authentication mode **
+        #if( $util.isNullOrEmpty($authMode) && !$util.isNull($ctx.identity) && !$util.isNull($ctx.identity.sub) && !$util.isNull($ctx.identity.issuer) && !$util.isNull($ctx.identity.username) && !$util.isNull($ctx.identity.claims) && !$util.isNull($ctx.identity.sourceIp) && !$util.isNull($ctx.identity.defaultAuthStrategy) )
+          #set( $authMode = "userPools" )
+        #end
+        ## [End] Determine request authentication mode **
+        ## [Start] Check authMode and execute owner/group checks **
+        #if( $authMode == "userPools" )
+          ## No Static Group Authorization Rules **
+          ## No Dynamic Group Authorization Rules **
+          ## [Start] Owner Authorization Checks **
+          #set( $isOwnerAuthorized = false )
+          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
+          #if( $util.isString($allowedOwners0) )
+            #if( $allowedOwners0 == $identityValue )
+              #set( $isOwnerAuthorized = true )
+            #end
+          #end
+          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+            #set( $isOwnerAuthorized = true )
+          #end
+          ## [End] Owner Authorization Checks **
+          ## [Start] Throw if unauthorized **
+          #if( !($isStaticGroupAuthorized == true || $isDynamicGroupAuthorized == true || $isOwnerAuthorized == true) )
+            $util.unauthorized()
+          #end
+          ## [End] Throw if unauthorized **
+        #else
+          $util.unauthorized()
+        #end
+        ## [End] Check authMode and execute owner/group checks **
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "username": "${identityValue}"
+            "password": "$ctx.args.password",
+            "playerData": "$ctx.args.playerData"
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+Outputs:
+  awsTutorialPrivateGameGraphQLHost:
+    Description: GraphQL Host
+    Value: !GetAtt awsTutorialPrivateGameGraphQLApi.GraphQLDns
+    Export:
+      Name: !Sub 'awsTutorialPrivateGameGraphQLHost'
+  awsTutorialPrivateGameGraphQLEndpoint:
+    Description: GraphQL Endpoint
+    Value: !GetAtt awsTutorialPrivateGameGraphQLApi.GraphQLUrl
+    Export:
+      Name: !Sub 'awsTutorialPrivateGameGraphQLEndpoint'

@@ -77,6 +77,14 @@ Parameters:
     Description: The launch path of the game server.
     Type: String
     Default: awsTutorial/Binaries/LinuxArm64/awsTutorialServer
+  PrivateGamePartTemplateUrl:
+    Description: Url of the cloud formation template for PrivateGame resources.
+    Type: String
+    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_PrivateGame.yaml
+  GameLiftGameSessionMaxPlayerNum:
+    Description: GameLift Alias Id of the GameLift Alias which is ued to create private game session 
+    Type: Number
+    Default: 20
 Conditions:
   ShouldDeployWebSocketMMO: !Equals
     - !Ref DeployWebSocketMMO
@@ -107,6 +115,21 @@ Resources:
         GameServerBuildServerSdkVersion: !Ref GameServerBuildServerSdkVersion
         GameServerBuildVersion: !Ref GameServerBuildVersion
         GameServerLaunchPath: !Ref GameServerLaunchPath
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialPrivateGameStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: ShouldDeployGameServer
+    Properties:
+      TemplateURL: !Ref PrivateGamePartTemplateUrl
+      Parameters:
+        ResourceNamePrefix: !Ref ResourceNamePrefix
+        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+        GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
+        GameLiftGameSessionMaxPlayerNum: !Ref GameLiftGameSessionMaxPlayerNum
       Tags:
         - Key: Usage
           Value: Youtube Streamer
