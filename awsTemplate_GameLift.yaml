@@ -153,6 +153,11 @@ Metadata:
         - awsTutorialFleet
         - awsTutorialAlias
 Outputs:
+  awsTutorialFleetId:
+    Description: GameLift Fleet ID
+    Value: !Ref awsTutorialFleet
+    Export:
+      Name: !Sub 'awsTutorialFleetId'
   awsTutorialAliasId:
     Description: GameLift Alias ID
     Value: !Ref awsTutorialAlias

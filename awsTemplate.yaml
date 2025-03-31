@@ -64,7 +64,7 @@ Parameters:
   GameServerBuildObjectVersion:
     Description: The version of the game server build file.
     Type: String
-    Default: R6jpIEnLxfTeSiMJ1SDAaP7jsWS0VMSj
+    Default: gkBW2iNLK.gPhqcKl69ECOjuf.3Xq3M_
   GameServerBuildServerSdkVersion:
     Description: The server sdk version of the game server build file.
     Type: String
@@ -128,6 +128,7 @@ Resources:
         CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
         CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
         CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+        GameLiftFleetId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetId
         GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
         GameLiftGameSessionMaxPlayerNum: !Ref GameLiftGameSessionMaxPlayerNum
       Tags:
@@ -205,24 +206,32 @@ Outputs:
     Description: Log Group Name
     Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialLogGroupName
   awsTutorialFriendSystemGraphQLHost:
-    Description: GraphQL Host
+    Description: Friend System GraphQL Host
     Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLHost
   awsTutorialFriendSystemGraphQLEndpoint:
-    Description: GraphQL Endpoint
+    Description: Friend System GraphQL Endpoint
     Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLEndpoint
   awsTutorialFriendSystemGraphQLRealtimeEndpoint:
-    Description: GraphQL realtime Endpoint
+    Description: Friend System GraphQL realtime Endpoint
     Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLRealtimeEndpoint
   awsTutorialInvitationSystemGraphQLHost:
-    Description: GraphQL Host
+    Description: Invitation System GraphQL Host
     Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLHost
   awsTutorialInvitationSystemGraphQLEndpoint:
-    Description: GraphQL Endpoint
+    Description: Invitation System GraphQL Endpoint
     Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLEndpoint
   awsTutorialInvitationSystemGraphQLRealtimeEndpoint:
-    Description: GraphQL realtime Endpoint
+    Description: Invitation System GraphQL realtime Endpoint
     Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLRealtimeEndpoint
   awsTutorialWebSocketMMODNSName:
     Condition: ShouldDeployWebSocketMMO
     Description: The DNSName of the WebSocket MMO Server
     Value: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName
+  awsTutorialPrivateGameGraphQLHost:
+    Condition: ShouldDeployGameServer
+    Description: Private Game GraphQL Host
+    Value: !GetAtt awsTutorialPrivateGameStack.Outputs.awsTutorialPrivateGameGraphQLHost
+  awsTutorialPrivateGameGraphQLEndpoint:
+    Condition: ShouldDeployGameServer
+    Description: Private Game GraphQL Endpoint
+    Value: !GetAtt awsTutorialPrivateGameStack.Outputs.awsTutorialPrivateGameGraphQLEndpoint

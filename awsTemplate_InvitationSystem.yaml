@@ -125,12 +125,12 @@ Resources:
         {
           "version": "2018-05-29",
           "payload": {
-            "fromUser": "${identityValue}",
-            "toUser": "${ctx.args.toUser}",
+            "fromUser": $utils.toJson($identityValue),
+            "toUser": $utils.toJson($ctx.args.toUser),
             "invitationStatus": "sent",
-            "roomId": "${ctx.args.roomId}",
-            "createdAt": "${createdAt}",
-            "updatedAt": "${updatedAt}"
+            "roomId": $utils.toJson($ctx.args.roomId),
+            "createdAt": $utils.toJson($createdAt),
+            "updatedAt": $utils.toJson($updatedAt)
           }
         }
       ResponseMappingTemplate: |
@@ -197,7 +197,7 @@ Resources:
                 {
                   "fieldName": "toUser",
                   "operator": "eq",
-                  "value": "${ctx.stash.identityValue}"
+                  "value": $utils.toJson($ctx.stash.identityValue)
                 }
               ]
             }

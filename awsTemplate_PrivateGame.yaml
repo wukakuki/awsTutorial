@@ -18,6 +18,9 @@ Parameters:
     Description: Cognito User Pool client id of the cognito user pool client which
       provide authentication for graphql api
     Type: String
+  GameLiftFleetId:
+    Description: GameLift Fleet Id of the GameLift Fleet which is ued to create private game session
+    Type: String
   GameLiftAliasId:
     Description: GameLift Alias Id of the GameLift Alias which is ued to create private game session 
     Type: String
@@ -58,6 +61,7 @@ Resources:
                   - gamelift:CreateGameSession
                   - gamelift:CreatePlayerSession
                   - gamelift:DescribeGameSessions
+                  - gamelift:SearchGameSessions
                   - gamelift:CreatePlayerSession
                 Resource:
                   - '*'
@@ -72,7 +76,8 @@ Resources:
         - - !Ref ResourceNamePrefix
           - _CreatePrivateGame_Lambda
       Description: Lambda function Create private game
-      Architectures: arm64
+      Architectures:
+        - arm64
       Code:
         ZipFile: |
           import os
@@ -93,11 +98,11 @@ Resources:
                 while True:
                   password = generate_random_password()
                   # generate a uuid to prevent duplicated password
-                  uuid = str(uuid.uuid4()) 
+                  uuid4 = str(uuid.uuid4())
                   request_parameters = {
                     'AliasId': aliasId,
-                    'MaximumPlayerSessionCount': maxPlayerNum,
-                    'Name': uuid,
+                    'MaximumPlayerSessionCount': int(maxPlayerNum),
+                    'Name': uuid4,
                     'GameProperties': [
                       {
                         'Key': 'Password',
@@ -107,15 +112,20 @@ Resources:
                         'Key': 'CreatorId',
                         'Value': event['username']
                       }
-                    ] + event.get('gameProperties', []),
+                    ],
                     'CreatorId': event['username'],
-                    'IdempotencyToken': password,
-                    'GameSessionData': event.get('gameData', '')
+                    'IdempotencyToken': password
                   }
+                  if 'gameData' in event and len(event['gameData']) > 0:
+                    request_parameters['GameSessionData'] = event['gameData']
+          
+                  if 'gameProperties' in event and len(event['gameProperties']) > 0:
+                    request_parameters['GameProperties'] += event['gameProperties']
+                    
                   response = gamelift.create_game_session(**request_parameters)
 
-                  if response['GameSession']:
-                    if response['GameSession']['Name'] is uuid:
+                  if 'GameSession' in response:
+                    if response['GameSession']['Name'] == uuid4:
                       output = {
                         'password': password,
                         'gameSessionId': response['GameSession']['GameSessionId'],
@@ -126,14 +136,14 @@ Resources:
                 if response['GameSession']['Status'] in ['TERMINATED', 'TERMINATING', 'ERROR']:
                   raise Exception(f"Failed to create private game: {response['GameSession']['StatusReason']}")
                 
-                while output['status'] is 'ACTIVATING':
+                while output['status'] == 'ACTIVATING':
                   request_parameters = {
                     'GameSessionId': output['gameSessionId'],
                     'Limit': 1
                   }
                   response = gamelift.describe_game_sessions(**request_parameters)
 
-                  if response['GameSessions'] && len(response['GameSessions']) == 1:
+                  if 'GameSessions' in response and len(response['GameSessions']) == 1:
                     output['status'] = response['GameSessions'][0]['Status']
 
                   if response['GameSessions'][0]['Status'] in ['TERMINATED', 'TERMINATING', 'ERROR']:
@@ -141,12 +151,14 @@ Resources:
                   
                 request_parameters = {
                   'GameSessionId': output['gameSessionId'],
-                  'PlayerId': event['username'],
-                  'PlayerData': event.get('playerData', '')
+                  'PlayerId': event['username']
                 }
+                if 'playerData' in event and len(event['playerData']) > 0:
+                  request_parameters['PlayerData'] = event['playerData']
+          
                 response = gamelift.create_player_session(**request_parameters)
 
-                if response['PlayerSession']:
+                if 'PlayerSession' in response:
                   output.update({
                     'playerSessionId': response['PlayerSession']['PlayerSessionId'],
                     'playerId': response['PlayerSession']['PlayerId'],
@@ -181,44 +193,48 @@ Resources:
         - - !Ref ResourceNamePrefix
           - _JoinPrivateGame_Lambda
       Description: Lambda function Join private game
-      Architectures: arm64
+      Architectures:
+        - arm64
       Code:
         ZipFile: |
           import os
           import boto3
           import re
           def lambda_handler(event, context):
+              fleetId = os.environ['FLEET_ID']
               aliasId = os.environ['ALIAS_ID']
+              region = os.environ['REGION']
               gamelift = boto3.client('gamelift')
               password_pattern = re.compile("^\w{8}$")
-              if password_pattern.match(event.get('password', '')):
+              if not password_pattern.match(event.get('password', '')):
                 raise Exception(f"password should be 8-digit")
 
               try:
                 request_parameters = {
                   'AliasId': aliasId,
-                  'FilterExpression': 'gameSessionProperties.Password = ' + event['password'],
+                  'FilterExpression': 'gameSessionId = \'arn:aws:gamelift:' + region + '::gamesession/' + fleetId + '/' + event['password'] + '\'',
+                  'SortExpression': 'creationTimeMillis DESC',
                   'Limit': 1
                 }
                 response = gamelift.search_game_sessions(**request_parameters)
 
-                if 'GameSessions' not in response || len(response['GameSessions']) == 0:
+                if 'GameSessions' not in response or len(response['GameSessions']) == 0:
                   raise Exception(f"The private game doesn't exist")
 
                 game_session_id = response['GameSessions'][0]['GameSessionId']
                 game_session_status = response['GameSessions'][0]['Status']
                 
-                if game_session_status in ['TERMINATED', 'TERMINATING', 'ERROR']
+                if game_session_status in ['TERMINATED', 'TERMINATING', 'ERROR']:
                   raise Exception(f"The private game is terminated or failed: {response['GameSession']['StatusReason']}")
                 
-                while game_session_status is 'ACTIVATING':
+                while game_session_status == 'ACTIVATING':
                   request_parameters = {
                     'GameSessionId': game_session_id,
                     'Limit': 1
                   }
                   response = gamelift.describe_game_sessions(**request_parameters)
 
-                  if response['GameSessions'] && len(response['GameSessions']) == 1:
+                  if 'GameSessions' in response and len(response['GameSessions']) == 1:
                     game_session_status = response['GameSessions'][0]['Status']
 
                   if game_session_status in ['TERMINATED', 'TERMINATING', 'ERROR']:
@@ -226,12 +242,14 @@ Resources:
 
                 request_parameters = {
                   'GameSessionId': game_session_id,
-                  'PlayerId': event['username'],
-                  'PlayerData': event.get('player_data', '')
+                  'PlayerId': event['username']
                 }
+                if 'playerData' in event and len(event['playerData']) > 0:
+                  request_parameters['PlayerData'] = event['playerData']
+          
                 response = gamelift.create_player_session(**request_parameters)
 
-                if response['PlayerSession']:
+                if 'PlayerSession' in response:
                   output = {
                     'playerSessionId': response['PlayerSession']['PlayerSessionId'],
                     'playerId': response['PlayerSession']['PlayerId'],
@@ -247,7 +265,9 @@ Resources:
                 raise Exception(f"Error processing request: {str(e)}")
       Environment:
         Variables:
+          FLEET_ID: !Ref GameLiftFleetId
           ALIAS_ID: !Ref GameLiftAliasId
+          REGION: !Ref AWS::Region
       Handler: index.lambda_handler
       # LoggingConfig:
       #   LogFormat: Text
@@ -347,7 +367,7 @@ Resources:
           mutation: Mutation
           subscription: Subscription
         }
-        type GameProperties @aws_cognito_user_pools {
+        input GameProperty {
           Key: String!
           Value: String!
         }
@@ -374,7 +394,7 @@ Resources:
         type Query @aws_cognito_user_pools {
         }
         type Mutation @aws_cognito_user_pools {
-          CreatePrivateGame(gameData: String, gameProperties: [GameProperties], playerData: String): CreatePrivateGameResult
+          CreatePrivateGame(gameData: String, gameProperties: [GameProperty], playerData: String): CreatePrivateGameResult
           JoinPrivateGame(password: String!, playerData: String): JoinPrivateGameResult
         }
         type Subscription @aws_cognito_user_pools {
@@ -427,10 +447,10 @@ Resources:
           "version": "2017-02-28",
           "operation": "Invoke",
           "payload": {
-            "username": "${identityValue}"
-            "gameData": "$ctx.args.gameData",
-            "gameProperties": "$ctx.args.gameProperties",
-            "playerData": "$ctx.args.playerData"
+            "username": $utils.toJson($identityValue),
+            "gameData": $utils.toJson($ctx.args.gameData),
+            "gameProperties": $utils.toJson($ctx.args.gameProperties),
+            "playerData": $utils.toJson($ctx.args.playerData)
           }
         }
       ResponseMappingTemplate: |
@@ -488,9 +508,9 @@ Resources:
           "version": "2017-02-28",
           "operation": "Invoke",
           "payload": {
-            "username": "${identityValue}"
-            "password": "$ctx.args.password",
-            "playerData": "$ctx.args.playerData"
+            "username": $utils.toJson($identityValue),
+            "password": $utils.toJson($ctx.args.password),
+            "playerData": $utils.toJson($ctx.args.playerData)
           }
         }
       ResponseMappingTemplate: |
