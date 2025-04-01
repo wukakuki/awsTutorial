@@ -205,7 +205,7 @@ Resources:
               aliasId = os.environ['ALIAS_ID']
               region = os.environ['REGION']
               gamelift = boto3.client('gamelift')
-              password_pattern = re.compile("^\w{8}$")
+              password_pattern = re.compile("^[A-Z0-9]{8}$")
               if not password_pattern.match(event.get('password', '')):
                 raise Exception(f"password should be 8-digit")
 
