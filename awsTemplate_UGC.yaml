@@ -64,12 +64,9 @@ Resources:
               - Sid: GameLiftBasic
                 Effect: Allow
                 Action:
-                  - gamelift:SearchGameSessions
-                  - gamelift:CreateGameSession
                   - gamelift:DescribeGameSessions
                   - gamelift:CreatePlayerSession
                   # overly permissive
-                  - gamelift:StartGameSessionPlacement
                   - gamelift:StopGameSessionPlacement
                   - gamelift:DescribeGameSessionPlacement
                 Resource: '*'

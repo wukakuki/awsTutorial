@@ -64,7 +64,7 @@ Parameters:
   GameServerBuildObjectVersion:
     Description: The version of the game server build file.
     Type: String
-    Default: gkBW2iNLK.gPhqcKl69ECOjuf.3Xq3M_
+    Default: AZuWDfn.HA1MVeHjH0XheVrQJtmSaf4C
   GameServerBuildServerSdkVersion:
     Description: The server sdk version of the game server build file.
     Type: String
@@ -92,6 +92,13 @@ Conditions:
   ShouldDeployGameServer: !Equals
     - !Ref DeployGameServer
     - 'true'
+  ShouldDeployPrivateGameWithWSMMO: !And
+    - !Condition ShouldDeployGameServer
+    - !Condition ShouldDeployWebSocketMMO
+  ShouldDeployPrivateGameWithoutWSMMO: !And
+    - !Condition ShouldDeployGameServer
+    - !Not
+      - !Condition ShouldDeployWebSocketMMO
 Resources:
   awsTutorialUGCStack:
     Type: AWS::CloudFormation::Stack
@@ -118,9 +125,12 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
-  awsTutorialPrivateGameStack:
+  awsTutorialPrivateGameWithWSMMOStack:
     Type: AWS::CloudFormation::Stack
-    Condition: ShouldDeployGameServer
+    Condition: ShouldDeployPrivateGameWithWSMMO
+    DependsOn:
+      - awsTutorialGameLiftStack
+      - awsTutorialWebSocketMMOStack
     Properties:
       TemplateURL: !Ref PrivateGamePartTemplateUrl
       Parameters:
@@ -131,6 +141,26 @@ Resources:
         GameLiftFleetId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetId
         GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
         GameLiftGameSessionMaxPlayerNum: !Ref GameLiftGameSessionMaxPlayerNum
+        GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
+        WSMMOHost: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialPrivateGameWithoutWSMMOStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: ShouldDeployPrivateGameWithoutWSMMO
+    DependsOn: awsTutorialGameLiftStack
+    Properties:
+      TemplateURL: !Ref PrivateGamePartTemplateUrl
+      Parameters:
+        ResourceNamePrefix: !Ref ResourceNamePrefix
+        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+        GameLiftFleetId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetId
+        GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
+        GameLiftGameSessionMaxPlayerNum: !Ref GameLiftGameSessionMaxPlayerNum
+        GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
       Tags:
         - Key: Usage
           Value: Youtube Streamer
@@ -230,8 +260,14 @@ Outputs:
   awsTutorialPrivateGameGraphQLHost:
     Condition: ShouldDeployGameServer
     Description: Private Game GraphQL Host
-    Value: !GetAtt awsTutorialPrivateGameStack.Outputs.awsTutorialPrivateGameGraphQLHost
+    Value: !If
+      - ShouldDeployWebSocketMMO
+      - !GetAtt awsTutorialPrivateGameWithWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLHost
+      - !GetAtt awsTutorialPrivateGameWithoutWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLHost
   awsTutorialPrivateGameGraphQLEndpoint:
     Condition: ShouldDeployGameServer
     Description: Private Game GraphQL Endpoint
-    Value: !GetAtt awsTutorialPrivateGameStack.Outputs.awsTutorialPrivateGameGraphQLEndpoint
+    Value: !If
+      - ShouldDeployWebSocketMMO
+      - !GetAtt awsTutorialPrivateGameWithWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLEndpoint
+      - !GetAtt awsTutorialPrivateGameWithoutWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLEndpoint

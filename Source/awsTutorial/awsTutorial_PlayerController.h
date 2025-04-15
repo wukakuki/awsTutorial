@@ -26,4 +26,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="awsTutorial")
 	FString GetRequestOption(const FString& key) const;
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category="awsTutorial")
+	void Kick();
 };

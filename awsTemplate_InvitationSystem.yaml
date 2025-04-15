@@ -97,15 +97,15 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -162,15 +162,15 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **

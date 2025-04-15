@@ -4,6 +4,8 @@
 
 #include "awsTutorial_PlayerController.h"
 
+#include <Net/Core/Connection/NetCloseResult.h>
+
 FString AAwsTutorial_PlayerController::GetRequestURL() const {
 	UNetConnection* netConnection = GetNetConnection();
 	if (netConnection == NULL) return FString();
@@ -32,4 +34,11 @@ FString AAwsTutorial_PlayerController::GetRequestOption(const FString& key) cons
 	if (o == NULL) return FString("");
 	if (o[0] == '=') return FString(o + 1);
 	return FString(o);
+}
+
+void AAwsTutorial_PlayerController::Kick_Implementation() {
+	UNetConnection* netConnection = GetNetConnection();
+	if (netConnection == NULL) return;
+
+	netConnection->Close(UE::Net::FNetCloseResult());
 }

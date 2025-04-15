@@ -500,6 +500,34 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
+#  awsTutorialFriendSystemLogRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      RoleName: !Join
+#        - ''
+#        - - !Ref ResourceNamePrefix
+#          - Friend_GraphQL_API_Log_Role
+#      AssumeRolePolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          -   Effect: Allow
+#              Principal:
+#                Service: appsync.amazonaws.com
+#              Action: sts:AssumeRole
+#      Policies:
+#        -   PolicyName: !Join
+#              - ''
+#              - - !Ref ResourceNamePrefix
+#                - Friend_GraphQL_API_Log_Policy
+#            PolicyDocument:
+#              Version: "2012-10-17"
+#              Statement:
+#                -   Effect: Allow
+#                    Action:
+#                      - logs:CreateLogGroup
+#                      - logs:CreateLogStream
+#                      - logs:PutLogEvents
+#                    Resource: "*"
   awsTutorialFriendSystemGraphQLApi:
     Type: AWS::AppSync::GraphQLApi
     Properties:
@@ -510,6 +538,9 @@ Resources:
       ApiType: GRAPHQL
       AuthenticationType: AMAZON_COGNITO_USER_POOLS
       IntrospectionConfig: ENABLED
+#      LogConfig:
+#        CloudWatchLogsRoleArn: !GetAtt awsTutorialFriendSystemLogRole.Arn
+#        FieldLogLevel: ALL
       UserPoolConfig:
         AppIdClientRegex: !Ref CognitoUserPoolClient
         AwsRegion: !Ref AWS::Region
@@ -882,15 +913,15 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -938,15 +969,15 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -995,15 +1026,15 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -1094,8 +1125,8 @@ Resources:
           "version": "2017-02-28",
           "operation": "Invoke",
           "payload": {
-            "username": "$ctx.stash.identityValue",
-            "user": "$ctx.stash.user.Username"
+            "username": $utils.toJson($ctx.stash.identityValue),
+            "user": $utils.toJson($ctx.stash.user.Username)
           }
         }
       ResponseMappingTemplate: |
@@ -1174,16 +1205,17 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
+              #set($ctx.stash.identityValue = $identityValue)
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
-            $util.qr($ctx.args.put("player", $utils.toJson($identityValue)))
+          #if( $util.isNull($allowedOwners0) )
+            #set($ctx.stash.identityValue = $identityValue)
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -1195,7 +1227,6 @@ Resources:
         #else
           $util.unauthorized()
         #end
-        #set($ctx.stash.identityValue = $identityValue)
         ## [End] Check authMode and execute owner/group checks **
         #if( $identityValue == $ctx.args.toUser )
           $util.error("You are sending friend request to yourself", "InvalidParameter")
@@ -1232,15 +1263,15 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -1308,15 +1339,15 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -1410,16 +1441,17 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
+              #set($ctx.stash.identityValue = $identityValue)
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
-            $util.qr($ctx.args.put("player", $utils.toJson($identityValue)))
+          #if( $util.isNull($allowedOwners0) )
+            #set($ctx.stash.identityValue = $identityValue)
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -1431,7 +1463,6 @@ Resources:
         #else
           $util.unauthorized()
         #end
-        #set($ctx.stash.identityValue = $identityValue)
         ## [End] Check authMode and execute owner/group checks **
         #if( $identityValue == $ctx.args.toUser )
           $util.error("You are deleting a friend request to yourself", "InvalidParameter")
@@ -1471,15 +1502,17 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
+              #set($ctx.stash.identityValue = $identityValue)
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
+            #set($ctx.stash.identityValue = $identityValue)
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -1491,9 +1524,7 @@ Resources:
         #else
           $util.unauthorized()
         #end
-        #set($ctx.stash.identityValue = $identityValue)
         ## [End] Check authMode and execute owner/group checks **
-        ## @TODO: make sure the friend request exists and the status is sent.
         {
           "version": "2018-05-29",
           "payload": null
@@ -1506,7 +1537,7 @@ Resources:
                 {
                   "fieldName": "toUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.stash.identityValue)
+                  "value": $ctx.stash.identityValue
                 }
               ]
             },
@@ -1515,7 +1546,7 @@ Resources:
                 {
                   "fieldName": "fromUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.stash.identityValue)
+                  "value": $ctx.stash.identityValue
                 }
               ]
             }
@@ -1545,15 +1576,17 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
+              #set($ctx.stash.identityValue = $identityValue)
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
+            #set($ctx.stash.identityValue = $identityValue)
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -1565,9 +1598,7 @@ Resources:
         #else
           $util.unauthorized()
         #end
-        #set($ctx.stash.identityValue = $identityValue)
         ## [End] Check authMode and execute owner/group checks **
-        ## @TODO: make sure the friend request exists and the status is sent.
         {
           "version": "2018-05-29",
           "payload": null
@@ -1578,26 +1609,27 @@ Resources:
             {
               "filters": [
                 {
-                  "fieldName": "fromUser",
-                  "operator": "eq",
-                  "value": $utils.toJson($ctx.stash.identityValue)
-                },{
                   "fieldName": "toUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.args.toUser)
+                  "value": $ctx.stash.identityValue
+                },
+                {
+                  "fieldName": "fromUser",
+                  "operator": "eq",
+                  "value": $ctx.args.toUser
                 }
               ]
-            },
-            {
+            },{
               "filters": [
                 {
                   "fieldName": "toUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.stash.identityValue)
-                },{
+                  "value": $ctx.args.toUser
+                },
+                {
                   "fieldName": "fromUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.args.toUser)
+                  "value": $ctx.stash.identityValue
                 }
               ]
             }
@@ -1627,15 +1659,17 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
+              #set($ctx.stash.identityValue = $identityValue)
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
+            #set($ctx.stash.identityValue = $identityValue)
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -1647,9 +1681,7 @@ Resources:
         #else
           $util.unauthorized()
         #end
-        #set($ctx.stash.identityValue = $identityValue)
         ## [End] Check authMode and execute owner/group checks **
-        ## @TODO: make sure the friend request exists and the status is sent.
         {
           "version": "2018-05-29",
           "payload": null
@@ -1660,26 +1692,27 @@ Resources:
             {
               "filters": [
                 {
-                  "fieldName": "fromUser",
-                  "operator": "eq",
-                  "value": $utils.toJson($ctx.stash.identityValue)
-                },{
                   "fieldName": "toUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.args.toUser)
+                  "value": $ctx.stash.identityValue
+                },
+                {
+                  "fieldName": "fromUser",
+                  "operator": "eq",
+                  "value": $ctx.args.toUser
                 }
               ]
-            },
-            {
+            },{
               "filters": [
                 {
                   "fieldName": "toUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.stash.identityValue)
-                },{
+                  "value": $ctx.args.toUser
+                },
+                {
                   "fieldName": "fromUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.args.toUser)
+                  "value": $ctx.stash.identityValue
                 }
               ]
             }
@@ -1709,15 +1742,17 @@ Resources:
           ## No Dynamic Group Authorization Rules **
           ## [Start] Owner Authorization Checks **
           #set( $isOwnerAuthorized = false )
-          ## Authorization rule: { allow: owner, ownerField: "player", identityClaim: "cognito:username" } **
-          #set( $allowedOwners0 = $util.defaultIfNull($ctx.args.player, null) )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
           #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
           #if( $util.isString($allowedOwners0) )
             #if( $allowedOwners0 == $identityValue )
+              #set($ctx.stash.identityValue = $identityValue)
               #set( $isOwnerAuthorized = true )
             #end
           #end
-          #if( $util.isNull($allowedOwners0) && (! $ctx.args.containsKey("player")) )
+          #if( $util.isNull($allowedOwners0) )
+            #set($ctx.stash.identityValue = $identityValue)
             #set( $isOwnerAuthorized = true )
           #end
           ## [End] Owner Authorization Checks **
@@ -1729,9 +1764,7 @@ Resources:
         #else
           $util.unauthorized()
         #end
-        #set($ctx.stash.identityValue = $identityValue)
         ## [End] Check authMode and execute owner/group checks **
-        ## @TODO: make sure the friend request exists and the status is sent.
         {
           "version": "2018-05-29",
           "payload": null
@@ -1744,12 +1777,12 @@ Resources:
                 {
                   "fieldName": "toUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.stash.identityValue)
+                  "value": $ctx.stash.identityValue
                 },
                 {
                   "fieldName": "fromUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.args.toUser)
+                  "value": $ctx.args.toUser
                 }
               ]
             },{
@@ -1757,12 +1790,12 @@ Resources:
                 {
                   "fieldName": "toUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.args.toUser)
+                  "value": $ctx.args.toUser
                 },
                 {
                   "fieldName": "fromUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.stash.identityValue)
+                  "value": $ctx.stash.identityValue
                 }
               ]
             }
