@@ -64,7 +64,7 @@ Parameters:
   GameServerBuildObjectVersion:
     Description: The version of the game server build file.
     Type: String
-    Default: AZuWDfn.HA1MVeHjH0XheVrQJtmSaf4C
+    Default: NZ41aDcU8Pzhcqbm3RH3pV1KOLqAcety
   GameServerBuildServerSdkVersion:
     Description: The server sdk version of the game server build file.
     Type: String
@@ -81,8 +81,12 @@ Parameters:
     Description: Url of the cloud formation template for PrivateGame resources.
     Type: String
     Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_PrivateGame.yaml
-  GameLiftGameSessionMaxPlayerNum:
-    Description: GameLift Alias Id of the GameLift Alias which is ued to create private game session 
+  GameLiftRegularGameSessionMaxPlayerNum:
+    Description: Max player number of the regular game
+    Type: Number
+    Default: 4
+  GameLiftPrivateGameSessionMaxPlayerNum:
+    Description: Max player number of the private game
     Type: Number
     Default: 20
 Conditions:
@@ -140,7 +144,8 @@ Resources:
         CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
         GameLiftFleetId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetId
         GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
-        GameLiftGameSessionMaxPlayerNum: !Ref GameLiftGameSessionMaxPlayerNum
+        GameLiftRegularGameSessionMaxPlayerNum: !Ref GameLiftRegularGameSessionMaxPlayerNum
+        GameLiftPrivateGameSessionMaxPlayerNum: !Ref GameLiftPrivateGameSessionMaxPlayerNum
         GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
         WSMMOHost: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName
       Tags:
@@ -159,7 +164,8 @@ Resources:
         CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
         GameLiftFleetId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetId
         GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
-        GameLiftGameSessionMaxPlayerNum: !Ref GameLiftGameSessionMaxPlayerNum
+        GameLiftRegularGameSessionMaxPlayerNum: !Ref GameLiftRegularGameSessionMaxPlayerNum
+        GameLiftPrivateGameSessionMaxPlayerNum: !Ref GameLiftPrivateGameSessionMaxPlayerNum
         GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
       Tags:
         - Key: Usage
