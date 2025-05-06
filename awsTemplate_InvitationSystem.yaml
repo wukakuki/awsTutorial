@@ -118,10 +118,6 @@ Resources:
           $util.unauthorized()
         #end
         ## [End] Check authMode and execute owner/group checks **
-        #if( $identityValue == $ctx.args.fromUser )
-          $util.error("You are rejecting a friend request to yourself", "InvalidParameter")
-        #end
-        ## @TODO: make sure the friend request exists and the status is sent.
         {
           "version": "2018-05-29",
           "payload": {
@@ -197,7 +193,7 @@ Resources:
                 {
                   "fieldName": "toUser",
                   "operator": "eq",
-                  "value": $utils.toJson($ctx.stash.identityValue)
+                  "value": $ctx.stash.identityValue
                 }
               ]
             }

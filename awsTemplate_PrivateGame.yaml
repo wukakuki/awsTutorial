@@ -109,7 +109,7 @@ Resources:
                 'GameProperties': [{
                   'Key': 'GameType',
                   'Value': 'Regular'
-                }]
+                }],
                 'GameSessionName': uuid4,
                 'DesiredPlayerSessions': [{
                   'PlayerId': event['username']
@@ -181,7 +181,7 @@ Resources:
             try:
               while True:
                 request_parameters = {
-                  'GameSessionId': game_session_id,
+                  'GameSessionId': event['gameSessionId'],
                   'Limit': 1
                 }
                 response = gamelift.describe_game_sessions(**request_parameters)
@@ -193,16 +193,19 @@ Resources:
                   output = {
                     'gameType': 'Regular'
                   }
-                  for gameProperty in response['GameSessions'][0][GameProperties]:
+                  for gameProperty in response['GameSessions'][0]['GameProperties']:
                     if gameProperty['Key'] == 'GameType':
                       output['gameType'] = gameProperty['Value']
+          
+                  if output['gameType'] == 'Regular':
+                    output['gameSessionId'] = response['GameSessions'][0]['GameSessionId']
                   
                   game_session_status = response['GameSessions'][0]['Status']
           
                 if game_session_status in ['TERMINATED', 'TERMINATING', 'ERROR']:
-                  raise Exception(f"The game is terminated or failed: {response['GameSession']['StatusReason']}")
+                  raise Exception(f"The game is terminated or failed: {response['GameSessions'][0].get('StatusReason', 'No status reason provided')}")
           
-                if game_session_status == 'ACTIVE'
+                if game_session_status == 'ACTIVE':
                   break
           
               request_parameters = {
@@ -218,7 +221,6 @@ Resources:
                 output.update({
                   'playerSessionId': response['PlayerSession']['PlayerSessionId'],
                   'playerId': response['PlayerSession']['PlayerId'],
-                  'gameSessionId': response['PlayerSession']['GameSessionId'],
                   'status': response['PlayerSession']['Status'],
                   'ipAddress': response['PlayerSession']['IpAddress'],
                   'dnsName': response['PlayerSession']['DnsName'],
@@ -313,7 +315,7 @@ Resources:
                     break
 
               if response['GameSession']['Status'] in ['TERMINATED', 'TERMINATING', 'ERROR']:
-                raise Exception(f"Failed to create private game: {response['GameSession']['StatusReason']}")
+                raise Exception(f"Failed to create private game: {response['GameSession'].get('StatusReason', 'No status reason provided')}")
               
               while output['status'] == 'ACTIVATING':
                 request_parameters = {
@@ -326,7 +328,7 @@ Resources:
                   output['status'] = response['GameSessions'][0]['Status']
 
                 if response['GameSessions'][0]['Status'] in ['TERMINATED', 'TERMINATING', 'ERROR']:
-                  raise Exception(f"Failed to create private game: {response['GameSession']['StatusReason']}")
+                  raise Exception(f"Failed to create private game: {response['GameSession'].get('StatusReason', 'No status reason provided')}")
                 
               request_parameters = {
                 'GameSessionId': output['gameSessionId'],
@@ -406,7 +408,7 @@ Resources:
               game_session_status = response['GameSessions'][0]['Status']
               
               if game_session_status in ['TERMINATED', 'TERMINATING', 'ERROR']:
-                raise Exception(f"The private game is terminated or failed: {response['GameSession']['StatusReason']}")
+                raise Exception(f"The private game is terminated or failed: {response['GameSession'].get('StatusReason', 'No status reason provided')}")
               
               while game_session_status == 'ACTIVATING':
                 request_parameters = {
@@ -419,7 +421,7 @@ Resources:
                   game_session_status = response['GameSessions'][0]['Status']
 
                 if game_session_status in ['TERMINATED', 'TERMINATING', 'ERROR']:
-                  raise Exception(f"The private game is terminated or failed: {response['GameSession']['StatusReason']}")
+                  raise Exception(f"The private game is terminated or failed: {response['GameSession'].get('StatusReason', 'No status reason provided')}")
 
               request_parameters = {
                 'GameSessionId': game_session_id,
@@ -586,7 +588,7 @@ Resources:
         type JoinRegularGameResult @aws_cognito_user_pools {
           playerSessionId: String!
           playerId: String!
-          gameSessionId: String!
+          gameSessionId: String
           gameType: String!
           status: String!
           ipAddress: String!
@@ -689,8 +691,8 @@ Resources:
     Type: AWS::AppSync::Resolver
     Properties:
       ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
-      DataSourceName: !GetAtt awsTutorialCreateRegularGameDataSource.Name
-      FieldName: CreateRegularGame
+      DataSourceName: !GetAtt awsTutorialJoinRegularGameDataSource.Name
+      FieldName: JoinRegularGame
       Kind: UNIT
       RequestMappingTemplate: |
         ## [Start] Set default values. **
@@ -734,7 +736,7 @@ Resources:
           "operation": "Invoke",
           "payload": {
             "username": $utils.toJson($identityValue),
-            "gameSessionId": $utils.toJson($ctx.args.gameSessionId)
+            "gameSessionId": $utils.toJson($ctx.args.gameSessionId),
             "playerData": $utils.toJson($ctx.args.playerData)
           }
         }
