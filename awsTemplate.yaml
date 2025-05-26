@@ -64,7 +64,7 @@ Parameters:
   GameServerBuildObjectVersion:
     Description: The version of the game server build file.
     Type: String
-    Default: NZ41aDcU8Pzhcqbm3RH3pV1KOLqAcety
+    Default: kjMiOywjrqezE0joR.JPwDCF7..ZTHLg
   GameServerBuildServerSdkVersion:
     Description: The server sdk version of the game server build file.
     Type: String
@@ -89,6 +89,10 @@ Parameters:
     Description: Max player number of the private game
     Type: Number
     Default: 20
+  MatchmakingPartTemplateUrl:
+    Description: Url of the cloud formation template for Matchmaking resources.
+    Type: String
+    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_Matchmaking.yaml
 Conditions:
   ShouldDeployWebSocketMMO: !Equals
     - !Ref DeployWebSocketMMO
@@ -148,6 +152,7 @@ Resources:
         GameLiftPrivateGameSessionMaxPlayerNum: !Ref GameLiftPrivateGameSessionMaxPlayerNum
         GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
         WSMMOHost: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName
+        GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
       Tags:
         - Key: Usage
           Value: Youtube Streamer
@@ -167,6 +172,42 @@ Resources:
         GameLiftRegularGameSessionMaxPlayerNum: !Ref GameLiftRegularGameSessionMaxPlayerNum
         GameLiftPrivateGameSessionMaxPlayerNum: !Ref GameLiftPrivateGameSessionMaxPlayerNum
         GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
+        GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialMatchmakingWithWSMMOStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: ShouldDeployPrivateGameWithWSMMO
+    DependsOn:
+      - awsTutorialGameLiftStack
+      - awsTutorialWebSocketMMOStack
+    Properties:
+      TemplateURL: !Ref MatchmakingPartTemplateUrl
+      Parameters:
+        ResourceNamePrefix: !Ref ResourceNamePrefix
+        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+        GameLiftGameSessionQueueArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueArn
+        WSMMOHost: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName
+        GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialMatchmakingWithoutWSMMOStack:
+    Type: AWS::CloudFormation::Stack
+    Condition: ShouldDeployPrivateGameWithoutWSMMO
+    DependsOn: awsTutorialGameLiftStack
+    Properties:
+      TemplateURL: !Ref MatchmakingPartTemplateUrl
+      Parameters:
+        ResourceNamePrefix: !Ref ResourceNamePrefix
+        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+        GameLiftGameSessionQueueArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueArn
+        GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
       Tags:
         - Key: Usage
           Value: Youtube Streamer

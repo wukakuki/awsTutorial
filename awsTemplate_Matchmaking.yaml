@@ -1,0 +1,1282 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: awsTutorial(Matchmaking part)
+Parameters:
+  ResourceNamePrefix:
+    Description: Prefix of resource name
+    Default: awstutorial
+    Type: String
+  CognitoUserPool:
+    Description: Cognito User Pool id of the cognito user pool client which provide
+      authentication for graphql api
+    Type: String
+  CognitoUserPoolArn:
+    Description: Cognito User Pool id of the cognito user pool client which provide
+      authentication for graphql api
+    Type: String
+  CognitoUserPoolClient:
+    Description: Cognito User Pool client id of the cognito user pool client which
+      provide authentication for graphql api
+    Type: String
+  GameLiftGameSessionQueueArn:
+    Description: GameLift GameSession Queue Arn of the GameLift GameSession Queue which is ued to start matchmaking
+    Type: String
+  WSMMOHost:
+    Description: host of websocket based MMO system
+    Type: String
+    Default: ""
+  GameLiftFleetInstanceRoleName:
+    Description: role name of gamelift fleet instance role
+    Type: String
+    Default: ""
+Resources:
+  awsTutorialMatchmakingRuleSet:
+    Type: AWS::GameLift::MatchmakingRuleSet
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Matchmaking_RuleSet
+#     use 10 times waitTimeSeconds
+      RuleSetBody: !Sub |
+        {
+          "name": "${ResourceNamePrefix}_Matchmaking_RuleSet",
+          "ruleLanguageVersion": "1.0",
+          "playerAttributes": [{
+            "name": "rate",
+            "type": "number",
+            "default": 0
+          }],
+          "teams": [{
+            "name": "team",
+            "maxPlayers": 4,
+            "minPlayers": 4,
+            "quantity": 2
+          }],
+          "rules": [{
+            "name": "fair_rate",
+            "description": "Favor players with similar rate."
+            "type": "distanceSort",
+            "sortDirection": "ascending",
+            "sortAttribute": "rate"
+          }, {
+            "name": "fast_connection",
+            "description": "Prefer matches with fast player connections first",
+            "type": "latency",
+            "maxLatency": 50
+          }],
+          "expansions": [{
+            "target": "rules[fast_connection].maxLatency",
+            "steps": [{
+              "waitTimeSeconds": 1,
+              "value": 100
+            }, {
+              "waitTimeSeconds": 2,
+              "value": 150
+            }, {
+              "waitTimeSeconds": 3,
+              "value": 1000
+            }, {
+              "waitTimeSeconds": 2,
+              "value": 9999
+            }]
+          }, {
+            "target": "teams[team].maxPlayers",
+            "steps": [{
+              "waitTimeSeconds": 1,
+              "value": 3
+            }, {
+              "waitTimeSeconds": 2,
+              "value": 2
+            }, {
+              "waitTimeSeconds": 3,
+              "value": 1
+            }, {
+            "target": "teams[team].minPlayers",
+            "steps": [{
+              "waitTimeSeconds": 1,
+              "value": 3
+            }, {
+              "waitTimeSeconds": 2,
+              "value": 2
+            }, {
+              "waitTimeSeconds": 3,
+              "value": 1
+            }]
+          }]
+        }
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialMatchmakingConfiguration:
+    Type: AWS::GameLift::MatchmakingConfiguration
+    DependsOn:
+      - awsTutorialMatchmakingRuleSet
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Matchmaking_Configuration
+      Description: Matchmaking Configuration for GameLift Matchmaking
+      AcceptanceRequired: FALSE
+      BackfillMode: MANUAL
+      FlexMatchMode: WITH_QUEUE
+      GameProperties:
+        - Key: "GameType"
+          Value: "Match"
+        - Key: "WSMMOHost"
+          Value: !Ref WSMMOHost
+      GameSessionQueueArns:
+        - !Ref GameLiftGameSessionQueueArn
+#     use 90 when release
+      RequestTimeoutSeconds: 10
+      RuleSetName: !Ref awsTutorialMatchmakingRuleSet
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialMatchmakingMatchTeamAssignmentTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Matchmaking_MatchTeamAssignment_DynamoDB_Table
+      AttributeDefinitions:
+        - AttributeName: PlayerName_Weapon
+          AttributeType: S
+        - AttributeName: GameSessionId
+          AttributeType: S
+        - AttributeName: CreateTime
+          AttributeType: N
+        - AttributeName: UpdateTime
+          AttributeType: N
+        - AttributeName: ExpireTime
+          AttributeType: N
+        - AttributeName: Team
+          AttributeType: S
+        - AttributeName: WinnerTeam
+          AttributeType: S
+        - AttributeName: Rate
+          AttributeType: N
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: false
+      OnDemandThroughput:
+        MaxReadRequestUnits: 1
+        MaxWriteRequestUnits: 1
+      TableClass: STANDARD
+      KeySchema:
+        - AttributeName: PlayerName_Weapon
+          KeyType: HASH
+        - AttributeName: GameSessionId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: byGame
+          KeySchema:
+            - AttributeName: GameSessionId
+              KeyType: HASH
+            - AttributeName: PlayerName_Weapon
+              KeyType: RANGE
+          Projection:
+            NonKeyAttributes:
+              - Team
+            ProjectionType: INCLUDE
+          OnDemandThroughput:
+            MaxReadRequestUnits: 1
+            MaxWriteRequestUnits: 1
+      LocalSecondaryIndexes:
+        - IndexName: byWeaponResult
+          KeySchema:
+            - AttributeName: PlayerName_Weapon
+              KeyType: HASH
+            - AttributeName: UpdateTime
+              KeyType: RANGE
+          Projection:
+            NonKeyAttributes:
+              - Team
+              - WinnerTeam
+              - Rate
+            ProjectionType: INCLUDE
+          OnDemandThroughput:
+            MaxReadRequestUnits: 1
+            MaxWriteRequestUnits: 1
+      TimeToLiveSpecification:
+        AttributeName: ExpireTime
+        Enabled: True
+  awsTutorialMatchmakingLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Matchmaking_Lambda_Function_Role
+      Description: Role for AWS Lambda Functions GameLift Matchmaking
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _Matchmaking_Lambda_Function_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: MatchmakingLambdaFunctionGameLiftPolicy
+                Effect: Allow
+                Action:
+                  - gamelift:StartMatchmaking
+                  - gamelift:DescribeMatchmaking
+                  - gamelift:StopMatchmaking
+                Resource:
+                  - '*'
+              - Sid: MatchmakingLambdaFunctionTeamAssignmentTablePolicy
+                Effect: Allow
+                Action:
+                  - dynamodb:PartiQLSelect
+                  - dynamodb:PartiQLUpdate
+                Resource:
+                  - !GetAtt awsTutorialMatchmakingMatchTeamAssignmentTable.Arn
+                  - !Join
+                    - ''
+                    - - !GetAtt awsTutorialMatchmakingMatchTeamAssignmentTable.Arn
+                      - /*
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialInsertMatchLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _InsertMatch_Lambda
+      Description: Lambda function Insert match
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import os
+          import time
+          from datetime import datetime, timedelta
+          import boto3
+          
+          def lambda_handler(event, context):
+            teamAssignmentTableName = os.environ['TEAM_ASSIGNMENT_TABLE_NAME']
+            weaponTableIndex = os.environ['Weapon_Index']
+            gameTableIndex = os.environ['Game_Index']
+            dynamodb = boto3.client('dynamodb')
+          
+            if any(key not in event for key in ['gameSessionId', 'team']):
+              raise Exception(f"Error updating match result: missing key: {event}")
+          
+            if any(key not in event['team'] for key in ['red', 'blue']):
+              raise Exception(f"Error updating match result: missing team info: {event['team']}")
+          
+            try:
+              for team in ['red', 'blue']:
+                for player in event['team']:
+                  if 'username' not in player:
+                    print('username is missing in {player}')
+                    continue
+          
+                  if 'weapon' not in player:
+                    print('weapon info is missing in {player}')
+                    continue
+          
+                  update_statement = 'insert into {0} value {\'PlayerName_Weapon\': ?, \'GameSessionId\': ?, \'CreateTime\': ?, \'ExpireTime\': ?, \'Team\': ?}'.format(teamAssignmentTableName)
+                  update_request_parameters = {
+                    'Statement': update_statement,
+                    'Parameters': [{
+                      "S": player['username'] + ' ' + player['weapon']
+                    }, {
+                      "S": event['gameSessionId']
+                    }, {
+                      "N": str(int(time.mktime(datetime.now().timetuple()))),
+                    }, {
+                      "N": str(int(time.mktime((datetime.now() + timedelta(days=360)).timetuple()))),
+                    }, {
+                      "S": team
+                    }]
+                  }
+          
+                  response = dynamodb.execute_statement(**update_statement)
+            except Exception as e:
+              raise Exception(f"Error processing request: {str(e)}")
+      Environment:
+        Variables:
+          TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
+          Weapon_Index: byWeaponResult
+          Game_Index: byGame
+      Handler: index.lambda_handler
+      # LoggingConfig:
+      #   LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialMatchmakingLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialUpdateMatchResultLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _UpdateMatchResult_Lambda
+      Description: Lambda function update match result
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import os
+          import time
+          from datetime import datetime, timedelta
+          import boto3
+          
+          def lambda_handler(event, context):
+            teamAssignmentTableName = os.environ['TEAM_ASSIGNMENT_TABLE_NAME']
+            weaponTableIndex = os.environ['Weapon_Index']
+            gameTableIndex = os.environ['Game_Index']
+            dynamodb = boto3.client('dynamodb')
+          
+            if any(key not in event for key in ['gameSessionId', 'winner']):
+              raise Exception(f"Error updating match result: missing input: {event}")
+          
+            if event['winner'] not in ['red', 'blue', fair]:
+              raise Exception(f"Error updating match result: invalid winner info: {event['winner']}")
+          
+            try:
+              statement = 'select * from {0}.{1} where GameSessionId = ?'.format(teamAssignmentTableName, gameTableIndex)
+              request_parameters = {
+                'Statement': statement,
+                'Parameters': [{
+                  "S": event['gameSessionId'],
+                }],
+                'Limit': 8
+              }
+      
+              response = dynamodb.execute_statement(**request_parameters)
+              if 'Items' not in response or len(response['Items']) == 0:
+                return
+          
+              for item in response['Items']:
+                query_statement = 'select * from {0}.{1} where PlayerName_Weapon = ? and UpdateTime > ? order by UpdateTime desc'.format(teamAssignmentTableName, weaponTableIndex)
+                query_request_parameters = {
+                  'Statement': query_statement,
+                  'Parameters': [{
+                    "S": item['PlayerName_Weapon']['S'],
+                  }, {
+                    "N": str(int(time.mktime((datetime.now() - timedelta(days=90)).timetuple()))),
+                  }],
+                  'Limit': 19
+                }
+                
+                query_response = dynamodb.execute_statement(**query_request_parameters)
+                if 'Items' not in query_response or len(query_response['Items']) == 0:
+                  return 0
+            
+                win = 1 if item['Team']['S'] == event['winner'] else 0
+                for query_item in query_response['Items']:
+                  if 'Team' not in query_item or 'WinnerTeam' not in query_item:
+                    continue
+            
+                  if query_item['Team'].get('S', '') == query_item['WinnerTeam'].get('S', 'fair'):
+                    win += 1
+            
+                rate = round(10 * (win / 20) ** 0.768, 1)
+        
+                update_statement = 'update {0} set UpdateTime = ? set WinnerTeam = ? set Rate = ? where PlayerName_Weapon = ? and GameSessionId = ? order by UpdateTime desc'.format(teamAssignmentTableName)
+                update_request_parameters = {
+                  'Statement': update_statement,
+                  'Parameters': [{
+                    "N": str(int(time.mktime(datetime.now().timetuple()))),
+                  }, {
+                    "S": event['winner']
+                  }, {
+                    "N": str(rate)
+                  }, {
+                    "S": player['username'] + ' ' + player['weapon']
+                  }, {
+                    "S": event['gameSessionId']
+                  }]
+                }
+        
+                response = dynamodb.execute_statement(**update_statement)
+            except Exception as e:
+              raise Exception(f"Error processing request: {str(e)}")
+      Environment:
+        Variables:
+          TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
+          Weapon_Index: byWeaponResult
+          Game_Index: byGame
+      Handler: index.lambda_handler
+      # LoggingConfig:
+      #   LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialMatchmakingLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialStartMatchmakingLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _StartMatchmaking_Lambda
+      Description: Lambda function Start matchmaking
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import os
+          import time
+          import boto3
+          
+          def lambda_handler(event, context):
+            teamAssignmentTableName = os.environ['TEAM_ASSIGNMENT_TABLE_NAME']
+            weaponTableIndex = os.environ['Weapon_Index']
+            gameTableIndex = os.environ['Game_Index']
+            dynamodb = boto3.client('dynamodb')
+          
+            matchmakingConfiguration = os.environ['MATCHMAKING_CONFIGURATION']
+            gamelift = boto3.client('gamelift')
+            try:
+              uuid4 = str(uuid.uuid4())
+              request_parameters = {
+                'TicketId': uuid4,
+                'ConfigurationName': matchmakingConfiguration,
+                'Players': []
+              }
+          
+              if 'players' not in event:
+                raise Exception(f"players is missing in the request. ")
+          
+              for player in event['players']:
+                if any(key not in player for key in ['username', 'weapon', 'latency']):
+                  print('username or weapon info is missing in {player}')
+                  continue
+          
+                rate = 0
+                statement = 'select * from {0}.{1} where PlayerName_Weapon = ? and UpdateTime > ? order by UpdateTime desc'.format(teamAssignmentTableName, weaponTableIndex)
+                request_parameters = {
+                  'Statement': statement,
+                  'Parameters': [{
+                    "S": player['username'] + ' ' + player['weapon'],
+                  }, {
+                    "N": str(int(time.mktime((datetime.now() - timedelta(days=90)).timetuple()))),
+                  }],
+                  'Limit': 1
+                }
+                response = dynamodb.execute_statement(**request_parameters)
+                if 'Items' not in response or len(response['Items']) == 0:
+                  rate = 0
+                elif 'Rate' not in response['Items'][0]:
+                  rate = 0
+                else
+                  rate = int(response['Items'][0]['Rate']['N'])
+          
+                request_parameters['Players'].append({
+                  'PlayerId': player['username'],
+                  'PlayerAttributes': {
+                    'rate': {
+                      'N': rate
+                    }
+                  },
+                  'LatencyInMs': {
+                    latency['regionIdentifier']:latency['latencyInMilliseconds'] for latency in player['latency']}
+                })
+          
+              if len(request_parameters['Players']) = 0:
+                raise Exception(f"there is no enough player in the request to start matchmaking: {event}")
+          
+              response = gamelift.start_matchmaking(**request_parameters)
+          
+              if 'MatchmakingTicket' not in response or 'TicketId' not in response['MatchmakingTicket']:
+                raise Exception(f"start matchmaking failed, ticket id is missing in the response.")
+                
+              output = {
+                'TicketId': response['MatchmakingTicket']['TicketId']
+              }
+              
+              return output
+            except Exception as e:
+              raise Exception(f"Error processing start matchmaking request: {str(e)}")
+      Environment:
+        Variables:
+          TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
+          Weapon_Index: byWeaponResult
+          Game_Index: byGame
+          MATCHMAKING_CONFIGURATION: !Ref awsTutorialMatchmakingConfiguration
+      Handler: index.lambda_handler
+      # LoggingConfig:
+      #   LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialMatchmakingLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialDescribeMatchmakingLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _DescribeMatchmaking_Lambda
+      Description: Lambda function Describe matchmaking
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import os
+          import time
+          import boto3
+          
+          def lambda_handler(event, context):
+            gamelift = boto3.client('gamelift')
+            try:
+              if 'ticket' not in event:
+                raise Exception(f"ticket is missing in the request. ")
+          
+              request_parameters = {
+                'TicketIds': [event['ticket']]
+              }
+          
+              response = gamelift.describe_matchmaking(**request_parameters)
+          
+              if 'TicketList' not in response or len(response['TicketList']) == 0:
+                raise Exception(f"describe matchmaking failed, ticket id is missing in the response.")
+          
+              output = {
+                'Status': response['TicketList'][0]['Status'],
+                'StatusReason': response['TicketList'][0]['StatusReason'],
+                'StatusMessage': response['TicketList'][0]['StatusMessage'],
+                'EstimatedWaitTime': response['TicketList'][0]['EstimatedWaitTime'],
+                'GameSessionConnectionInfo': response['TicketList'][0]['GameSessionConnectionInfo']
+              }
+          
+              if 'username' in event:
+                if not any(player['PlayerId'] == event['username'] for player in response['TicketList'][0]['Players']):
+                  raise Exception(f"ticket id is not belong to this user.")
+                  
+                output['GameSessionConnectionInfo']['MatchedPlayerSessions'][:] = [playerSession for playerSession in output['GameSessionConnectionInfo']['MatchedPlayerSessions'] if playerSession['PlayerId'] == event['username']]
+          
+              return output
+            except Exception as e:
+              raise Exception(f"Error processing describe matchmaking request: {str(e)}")
+      Environment:
+        Variables:
+          TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
+          Weapon_Index: byWeaponResult
+          Game_Index: byGame
+          MATCHMAKING_CONFIGURATION: !Ref awsTutorialMatchmakingConfiguration
+      Handler: index.lambda_handler
+      # LoggingConfig:
+      #   LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialMatchmakingLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialStopMatchmakingLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _StopMatchmaking_Lambda
+      Description: Lambda function Describe matchmaking
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import os
+          import time
+          import boto3
+          
+          def lambda_handler(event, context):
+            gamelift = boto3.client('gamelift')
+            try:
+              if 'ticket' not in event:
+                raise Exception(f"ticket is missing in the request. ")
+          
+              describe_request_parameters = {
+                'TicketIds': [event['ticket']]
+              }
+          
+              describe_response = gamelift.describe_matchmaking(**describe_request_parameters)
+          
+              if 'TicketList' not in describe_response or len(describe_response['TicketList']) == 0:
+                raise Exception(f"describe matchmaking failed while stopping matchmaking, ticket id is missing in the response.")
+          
+              if 'username' in event:
+                if not any(player['PlayerId'] == event['username'] for player in describe_response['TicketList'][0]['Players']):
+                  raise Exception(f"ticket id is not belong to this user.")
+          
+              if describe_response['TicketList'][0]['Status'] not in ['QUEUED', 'SEARCHING']:
+                raise Exception(f"ticket id is not currently in queued or searching status.")
+          
+              request_parameters = {
+                'TicketId': event['ticket']
+              }
+          
+              response = gamelift.stop_matchmaking(**request_parameters)
+          
+              return
+            except Exception as e:
+              raise Exception(f"Error processing stop matchmaking request: {str(e)}")
+      Environment:
+        Variables:
+          TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
+          Weapon_Index: byWeaponResult
+          Game_Index: byGame
+          MATCHMAKING_CONFIGURATION: !Ref awsTutorialMatchmakingConfiguration
+      Handler: index.lambda_handler
+      # LoggingConfig:
+      #   LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialMatchmakingLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialMatchmakingGraphQLApi:
+    Type: AWS::AppSync::GraphQLApi
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - Matchmaking_GraphQL_API
+      ApiType: GRAPHQL
+      AuthenticationType: AMAZON_COGNITO_USER_POOLS
+      IntrospectionConfig: ENABLED
+      UserPoolConfig:
+        AppIdClientRegex: !Ref CognitoUserPoolClient
+        AwsRegion: !Ref AWS::Region
+        DefaultAction: ALLOW
+        UserPoolId: !Ref CognitoUserPool
+      AdditionalAuthenticationProviders:
+        - AuthenticationType: AWS_IAM
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+      Visibility: GLOBAL
+  awsTutorialMatchmakingGraphQLApiPolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _GameLift_Matchmaking_FleetInstance_Policy
+      RoleName: !Ref GameLiftFleetInstanceRoleName
+      PolicyDocument:
+        Statement:
+          -   Action:
+                - appsync:GraphQL
+              Effect: Allow
+              Resource:
+                - !Ref awsTutorialMatchmakingGraphQLApi
+  awsTutorialMatchmakingResultDataSourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Matchmaking_DataSource_Role
+      Description: Role for AWS Graphql Api Matchmaking Data Source
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _Matchmaking_DataSource_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: MatchmakingWeaponRateDataSourcePolicy
+                Effect: Allow
+                Action:
+                  - dynamodb:query
+                Resource:
+                  - !GetAtt awsTutorialMatchmakingMatchTeamAssignmentTable.Arn
+                  - !Join
+                    - ''
+                    -   - !GetAtt awsTutorialMatchmakingMatchTeamAssignmentTable.Arn
+                        - /*
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialGetWeaponRateDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _GetWeaponRate_DataSource
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      Description: Data source for get weapon rate
+      DynamoDBConfig:
+        AwsRegion: !Ref AWS::Region
+        TableName: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
+      ServiceRoleArn: !GetAtt awsTutorialMatchmakingResultDataSourceRole.Arn
+      Type: AMAZON_DYNAMODB
+  awsTutorialMatchmakingLambdaFunctionDataSourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _Matchmaking_DataSource_Role
+      Description: Role for AWS Graphql Api Matchmaking Data Source
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _Matchmaking_DataSource_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: MatchmakingDataSourcePolicy
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt awsTutorialInsertMatchLambdaFunction.Arn
+                  - !GetAtt awsTutorialUpdateMatchResultLambdaFunction.Arn
+                  - !GetAtt awsTutorialStartMatchmakingLambdaFunction.Arn
+                  - !GetAtt awsTutorialDescribeMatchmakingLambdaFunction.Arn
+                  - !GetAtt awsTutorialStopMatchmakingLambdaFunction.Arn
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialInsertMatchDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _InsertMatch_DataSource
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      Description: Data source for insert match
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt awsTutorialInsertMatchLambdaFunction.Arn
+      ServiceRoleArn: !GetAtt awsTutorialMatchmakingLambdaFunctionDataSourceRole.Arn
+      Type: AWS_LAMBDA
+  awsTutorialUpdateMatchResultDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _UpdateMatchResult_DataSource
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      Description: Data source for update match result
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt awsTutorialUpdateMatchResultLambdaFunction.Arn
+      ServiceRoleArn: !GetAtt awsTutorialMatchmakingLambdaFunctionDataSourceRole.Arn
+      Type: AWS_LAMBDA
+  awsTutorialStartMatchmakingDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _StartMatchmaking_DataSource
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      Description: Data source for start matchmaking
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt awsTutorialStartMatchmakingLambdaFunction.Arn
+      ServiceRoleArn: !GetAtt awsTutorialMatchmakingLambdaFunctionDataSourceRole.Arn
+      Type: AWS_LAMBDA
+  awsTutorialDescribeMatchmakingDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _DescribeMatchmaking_DataSource
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      Description: Data source for describe matchmaking
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt awsTutorialDescribeMatchmakingLambdaFunction.Arn
+      ServiceRoleArn: !GetAtt awsTutorialMatchmakingLambdaFunctionDataSourceRole.Arn
+      Type: AWS_LAMBDA
+  awsTutorialStopMatchmakingDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _StopMatchmaking_DataSource
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      Description: Data source for stop matchmaking
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt awsTutorialStopMatchmakingLambdaFunction.Arn
+      ServiceRoleArn: !GetAtt awsTutorialMatchmakingLambdaFunctionDataSourceRole.Arn
+      Type: AWS_LAMBDA
+  awsTutorialMatchmakingGraphQLSchema:
+    Type: AWS::AppSync::GraphQLSchema
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      Definition: |
+        schema @aws_cognito_user_pools @aws_iam {
+          query: Query
+          mutation: Mutation
+          subscription: Subscription
+        }
+        input Player @aws_iam {
+          username: String!
+          weapon: String!
+        }
+        input Team @aws_iam {
+          red: [Player]!
+          blue: [Player]!
+        }
+        input Latency @aws_cognito_user_pools @aws_iam {
+          regionIdentifier: String!
+          latencyInMilliseconds: Float!
+        }
+        input StartMatchmakingPlayer @aws_iam {
+          username: String!
+          weapon: String!
+          latency: [Latency]!
+        }
+        type StartMatchmakingResult @aws_cognito_user_pools @aws_iam {
+          ticketId: String!
+        }
+        type MatchedPlayerSession @aws_cognito_user_pools @aws_iam {
+          PlayerId: String!
+          PlayerSessionId: String!
+        }
+        type GameSessionConnectionInfo @aws_cognito_user_pools @aws_iam {
+          GameSessionArn: String!
+          IpAddress: String!
+          DnsName: String!
+          Port: Int!
+          MatchedPlayerSessions: [MatchedPlayerSession]!
+        }
+        type DescribeMatchmakingResult @aws_cognito_user_pools @aws_iam {
+          Status: String!
+          StatusReason: String
+          StatusMessage: String
+          EstimatedWaitTime: Int
+          GameSessionConnectionInfo: GameSessionConnectionInfo
+        }
+        type Query @aws_cognito_user_pools {
+          GetWeaponRate(weapon: String!): Int @aws_cognito_user_pools
+          DescribeMatchmaking(ticketId: String!): DescribeMatchmakingResult @aws_cognito_user_pools
+          DescribeMatchmakingServer(ticketId: String!): DescribeMatchmakingResult @aws_iam
+        }
+        type Mutation {
+          InsertMatch(gameSessionId: String!, team: [Team]!) @aws_iam
+          UpdateMatchResult(gameSessionId: String!, winner: String!) @aws_iam
+          StartMatchmaking(weapon: String!, latency: [Latency]!): StartMatchmakingResult @aws_cognito_user_pools
+          StartMatchmakingServer(players: [StartMatchmakingPlayer]!): StartMatchmakingResult @aws_iam
+          StopMatchmaking(ticketId: String!) @aws_cognito_user_pools
+          StopMatchmakingServer(ticketId: String!) @aws_iam
+        }
+        type Subscription @aws_cognito_user_pools {
+        }
+  awsTutorialMatchmakingGraphQLQueryGetWeaponRateResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialGetWeaponRateDataSource.Name
+      FieldName: GetWeaponRate
+      Kind: UNIT
+      RequestMappingTemplate: |
+        ## [Start] Set default values. **
+        #set( $createdAt = $util.time.nowEpochSeconds() )
+        #set( $updatedAt = $util.time.nowEpochSeconds() )
+        ## [End] Set default values. **
+        ## [Start] Determine request authentication mode **
+        #if( $util.isNullOrEmpty($authMode) && !$util.isNull($ctx.identity) && !$util.isNull($ctx.identity.sub) && !$util.isNull($ctx.identity.issuer) && !$util.isNull($ctx.identity.username) && !$util.isNull($ctx.identity.claims) && !$util.isNull($ctx.identity.sourceIp) && !$util.isNull($ctx.identity.defaultAuthStrategy) )
+          #set( $authMode = "userPools" )
+        #end
+        ## [End] Determine request authentication mode **
+        ## [Start] Check authMode and execute owner/group checks **
+        #if( $authMode == "userPools" )
+          ## No Static Group Authorization Rules **
+          ## No Dynamic Group Authorization Rules **
+          ## [Start] Owner Authorization Checks **
+          #set( $isOwnerAuthorized = false )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
+          #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
+          #if( $util.isString($allowedOwners0) )
+            #if( $allowedOwners0 == $identityValue )
+              #set( $isOwnerAuthorized = true )
+            #end
+          #end
+          #if( $util.isNull($allowedOwners0) )
+            #set( $isOwnerAuthorized = true )
+          #end
+          ## [End] Owner Authorization Checks **
+          ## [Start] Throw if unauthorized **
+          #if( !($isStaticGroupAuthorized == true || $isDynamicGroupAuthorized == true || $isOwnerAuthorized == true) )
+            $util.unauthorized()
+          #end
+          ## [End] Throw if unauthorized **
+        #else
+          $util.unauthorized()
+        #end
+        ## [End] Check authMode and execute owner/group checks **
+        {
+          "version": "2017-02-28",
+          "operation": "Query",
+          "index": "byWeaponResult",
+          "query": {
+            "expression": "PlayerName_Weapon = :PlayerName_Weapon and UpdateTime > :UpdateTime",
+            "expressionValues": {
+              ":PlayerName_Weapon": $util.dynamodb.toDynamoDBJson("${identityValue} ${ctx.args.weapon}"),
+              ":UpdateTime": $util.dynamodb.toDynamoDBJson($updatedAt - 90 * 24 * 60 * 60)
+            }
+          },
+          "select": "ALL_PROJECTED_ATTRIBUTES",
+          "scanIndexForward": false,
+          "limit": 1
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          #if($ctx.result.items && $ctx.result.items.size() > 0)
+            $ctx.result.items[0].Rate
+          #else
+            0
+          #end
+        #end
+      TypeName: Query
+  awsTutorialMatchmakingGraphQLMutationInsertMatchResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialInsertMatchDataSource.Name
+      FieldName: InsertMatch
+      Kind: UNIT
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "gameSessionId": $utils.toJson($ctx.args.gameSessionId),
+            "team": $utils.toJson($ctx.args.team)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+  awsTutorialMatchmakingGraphQLMutationUpdateMatchResultResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialUpdateMatchResultDataSource.Name
+      FieldName: UpdateMatchResult
+      Kind: UNIT
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "gameSessionId": $utils.toJson($ctx.args.gameSessionId),
+            "winner": $utils.toJson($ctx.args.winner)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+  awsTutorialMatchmakingGraphQLMutationStartMatchmakingResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialStartMatchmakingDataSource.Name
+      FieldName: StartMatchmaking
+      Kind: UNIT
+      RequestMappingTemplate: |
+        ## [Start] Set default values. **
+        #set( $createdAt = $util.time.nowEpochSeconds() )
+        #set( $updatedAt = $util.time.nowEpochSeconds() )
+        ## [End] Set default values. **
+        ## [Start] Determine request authentication mode **
+        #if( $util.isNullOrEmpty($authMode) && !$util.isNull($ctx.identity) && !$util.isNull($ctx.identity.sub) && !$util.isNull($ctx.identity.issuer) && !$util.isNull($ctx.identity.username) && !$util.isNull($ctx.identity.claims) && !$util.isNull($ctx.identity.sourceIp) && !$util.isNull($ctx.identity.defaultAuthStrategy) )
+          #set( $authMode = "userPools" )
+        #end
+        ## [End] Determine request authentication mode **
+        ## [Start] Check authMode and execute owner/group checks **
+        #if( $authMode == "userPools" )
+          ## No Static Group Authorization Rules **
+          ## No Dynamic Group Authorization Rules **
+          ## [Start] Owner Authorization Checks **
+          #set( $isOwnerAuthorized = false )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
+          #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
+          #if( $util.isString($allowedOwners0) )
+            #if( $allowedOwners0 == $identityValue )
+              #set( $isOwnerAuthorized = true )
+            #end
+          #end
+          #if( $util.isNull($allowedOwners0) )
+            #set( $isOwnerAuthorized = true )
+          #end
+          ## [End] Owner Authorization Checks **
+          ## [Start] Throw if unauthorized **
+          #if( !($isStaticGroupAuthorized == true || $isDynamicGroupAuthorized == true || $isOwnerAuthorized == true) )
+            $util.unauthorized()
+          #end
+          ## [End] Throw if unauthorized **
+        #else
+          $util.unauthorized()
+        #end
+        ## [End] Check authMode and execute owner/group checks **
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "players": [{
+              "username": $utils.toJson($identityValue),
+              "weapon": $utils.toJson($ctx.args.weapon),
+              "latency": $utils.toJson($ctx.args.latencies),
+            }]
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+  awsTutorialMatchmakingGraphQLMutationStartMatchmakingServerResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialStartMatchmakingDataSource.Name
+      FieldName: StartMatchmakingServer
+      Kind: UNIT
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "players": $utils.toJson($ctx.args.players)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+  awsTutorialMatchmakingGraphQLQueryDescribeMatchmakingResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialDescribeMatchmakingDataSource.Name
+      FieldName: DescribeMatchmaking
+      Kind: UNIT
+      RequestMappingTemplate: |
+        ## [Start] Set default values. **
+        #set( $createdAt = $util.time.nowEpochSeconds() )
+        #set( $updatedAt = $util.time.nowEpochSeconds() )
+        ## [End] Set default values. **
+        ## [Start] Determine request authentication mode **
+        #if( $util.isNullOrEmpty($authMode) && !$util.isNull($ctx.identity) && !$util.isNull($ctx.identity.sub) && !$util.isNull($ctx.identity.issuer) && !$util.isNull($ctx.identity.username) && !$util.isNull($ctx.identity.claims) && !$util.isNull($ctx.identity.sourceIp) && !$util.isNull($ctx.identity.defaultAuthStrategy) )
+          #set( $authMode = "userPools" )
+        #end
+        ## [End] Determine request authentication mode **
+        ## [Start] Check authMode and execute owner/group checks **
+        #if( $authMode == "userPools" )
+          ## No Static Group Authorization Rules **
+          ## No Dynamic Group Authorization Rules **
+          ## [Start] Owner Authorization Checks **
+          #set( $isOwnerAuthorized = false )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
+          #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
+          #if( $util.isString($allowedOwners0) )
+            #if( $allowedOwners0 == $identityValue )
+              #set( $isOwnerAuthorized = true )
+            #end
+          #end
+          #if( $util.isNull($allowedOwners0) )
+            #set( $isOwnerAuthorized = true )
+          #end
+          ## [End] Owner Authorization Checks **
+          ## [Start] Throw if unauthorized **
+          #if( !($isStaticGroupAuthorized == true || $isDynamicGroupAuthorized == true || $isOwnerAuthorized == true) )
+            $util.unauthorized()
+          #end
+          ## [End] Throw if unauthorized **
+        #else
+          $util.unauthorized()
+        #end
+        ## [End] Check authMode and execute owner/group checks **
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "username": $utils.toJson($identityValue),
+            "ticket": $utils.toJson($ctx.args.ticketId)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Query
+  awsTutorialMatchmakingGraphQLQueryDescribeMatchmakingServerResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialDescribeMatchmakingDataSource.Name
+      FieldName: DescribeMatchmakingServer
+      Kind: UNIT
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "ticket": $utils.toJson($ctx.args.ticketId)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Query
+  awsTutorialMatchmakingGraphQLMutationStopMatchmakingResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialStopMatchmakingDataSource.Name
+      FieldName: StopMatchmaking
+      Kind: UNIT
+      RequestMappingTemplate: |
+        ## [Start] Set default values. **
+        #set( $createdAt = $util.time.nowEpochSeconds() )
+        #set( $updatedAt = $util.time.nowEpochSeconds() )
+        ## [End] Set default values. **
+        ## [Start] Determine request authentication mode **
+        #if( $util.isNullOrEmpty($authMode) && !$util.isNull($ctx.identity) && !$util.isNull($ctx.identity.sub) && !$util.isNull($ctx.identity.issuer) && !$util.isNull($ctx.identity.username) && !$util.isNull($ctx.identity.claims) && !$util.isNull($ctx.identity.sourceIp) && !$util.isNull($ctx.identity.defaultAuthStrategy) )
+          #set( $authMode = "userPools" )
+        #end
+        ## [End] Determine request authentication mode **
+        ## [Start] Check authMode and execute owner/group checks **
+        #if( $authMode == "userPools" )
+          ## No Static Group Authorization Rules **
+          ## No Dynamic Group Authorization Rules **
+          ## [Start] Owner Authorization Checks **
+          #set( $isOwnerAuthorized = false )
+          ## Authorization rule: { allow: owner, ownerField: None, identityClaim: "cognito:username" } **
+          #set( $allowedOwners0 = $util.defaultIfNull(null, null) )
+          #set( $identityValue = $util.defaultIfNull($ctx.identity.claims.get("username"), $util.defaultIfNull($ctx.identity.claims.get("cognito:username"), "___xamznone____")) )
+          #if( $util.isString($allowedOwners0) )
+            #if( $allowedOwners0 == $identityValue )
+              #set( $isOwnerAuthorized = true )
+            #end
+          #end
+          #if( $util.isNull($allowedOwners0) )
+            #set( $isOwnerAuthorized = true )
+          #end
+          ## [End] Owner Authorization Checks **
+          ## [Start] Throw if unauthorized **
+          #if( !($isStaticGroupAuthorized == true || $isDynamicGroupAuthorized == true || $isOwnerAuthorized == true) )
+            $util.unauthorized()
+          #end
+          ## [End] Throw if unauthorized **
+        #else
+          $util.unauthorized()
+        #end
+        ## [End] Check authMode and execute owner/group checks **
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "username": $utils.toJson($identityValue),
+            "ticket": $utils.toJson($ctx.args.ticketId)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+  awsTutorialMatchmakingGraphQLMutationStopMatchmakingServerResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialStopMatchmakingDataSource.Name
+      FieldName: StopMatchmakingServer
+      Kind: UNIT
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "ticket": $utils.toJson($ctx.args.ticketId)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+Outputs:
+  awsTutorialMatchmakingGraphQLHost:
+    Description: GraphQL Host
+    Value: !GetAtt awsTutorialMatchmakingGraphQLApi.GraphQLDns
+    Export:
+      Name: !Sub 'awsTutorialMatchmakingGraphQLHost'
+  awsTutorialMatchmakingGraphQLEndpoint:
+    Description: GraphQL Endpoint
+    Value: !GetAtt awsTutorialMatchmakingGraphQLApi.GraphQLUrl
+    Export:
+      Name: !Sub 'awsTutorialMatchmakingGraphQLEndpoint'

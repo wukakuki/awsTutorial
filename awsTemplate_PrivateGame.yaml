@@ -39,6 +39,10 @@ Parameters:
     Description: host of websocket based MMO system
     Type: String
     Default: ""
+  GameLiftFleetInstanceRoleName:
+    Description: role name of gamelift fleet instance role
+    Type: String
+    Default: ""
 Resources:
   awsTutorialPrivateGameLambdaFunctionRole:
     Type: AWS::IAM::Role
@@ -74,6 +78,7 @@ Resources:
                   - gamelift:DescribeGameSessions
                   - gamelift:SearchGameSessions
                   - gamelift:StartGameSessionPlacement
+                  - gamelift:UpdateGameSession
                 Resource:
                   - '*'
       Tags:
@@ -231,6 +236,90 @@ Resources:
               return {}
             except Exception as e:
               raise Exception(f"Error processing join regular game request: {str(e)}")
+      Handler: index.lambda_handler
+      # LoggingConfig:
+      #   LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialPrivateGameLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialOpenRegularGameLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _OpenRegularGame_Lambda
+      Description: Lambda function Open regular game
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+          import re
+          
+          def lambda_handler(event, context):
+            gamelift = boto3.client('gamelift')
+          
+            try:
+              if 'gameSessionId' not in event:
+                raise Exception(f"gameSessionId is missing in the request")
+                
+              request_parameters = {
+                'GameSessionId': event['gameSessionId'],
+                'PlayerSessionCreationPolicy': 'ACCEPT_ALL'
+              }
+          
+              response = gamelift.update_game_session(**request_parameters)
+              return
+            except Exception as e:
+              raise Exception(f"Error processing open regular game request: {str(e)}")
+      Handler: index.lambda_handler
+      # LoggingConfig:
+      #   LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialPrivateGameLambdaFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialCloseRegularGameLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _CloseRegularGame_Lambda
+      Description: Lambda function Close regular game
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+          import re
+          
+          def lambda_handler(event, context):
+            gamelift = boto3.client('gamelift')
+          
+            try:
+              if 'gameSessionId' not in event:
+                raise Exception(f"gameSessionId is missing in the request")
+          
+              request_parameters = {
+                'GameSessionId': event['gameSessionId'],
+                'PlayerSessionCreationPolicy': 'DENY_ALL'
+              }
+          
+              response = gamelift.update_game_session(**request_parameters)
+              return
+            except Exception as e:
+              raise Exception(f"Error processing close regular game request: {str(e)}")
       Handler: index.lambda_handler
       # LoggingConfig:
       #   LogFormat: Text
@@ -476,10 +565,27 @@ Resources:
         AwsRegion: !Ref AWS::Region
         DefaultAction: ALLOW
         UserPoolId: !Ref CognitoUserPool
+      AdditionalAuthenticationProviders:
+        - AuthenticationType: AWS_IAM
       Tags:
         - Key: Usage
           Value: Youtube Streamer
       Visibility: GLOBAL
+  awsTutorialPrivateGameGraphQLApiPolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _GameLift_PrivateGame_FleetInstance_Policy
+      RoleName: !Ref GameLiftFleetInstanceRoleName
+      PolicyDocument:
+        Statement:
+          -   Action:
+                - appsync:GraphQL
+              Effect: Allow
+              Resource:
+                - !Ref awsTutorialPrivateGameGraphQLApi
   awsTutorialPrivateGameLambdaFunctionDataSourceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -511,6 +617,8 @@ Resources:
                 Resource:
                   - !GetAtt awsTutorialCreateRegularGameLambdaFunction.Arn
                   - !GetAtt awsTutorialJoinRegularGameLambdaFunction.Arn
+                  - !GetAtt awsTutorialOpenRegularGameLambdaFunction.Arn
+                  - !GetAtt awsTutorialCloseRegularGameLambdaFunction.Arn
                   - !GetAtt awsTutorialCreatePrivateGameLambdaFunction.Arn
                   - !GetAtt awsTutorialJoinPrivateGameLambdaFunction.Arn
       Tags:
@@ -540,6 +648,32 @@ Resources:
       Description: Data source for join regular game
       LambdaConfig:
         LambdaFunctionArn: !GetAtt awsTutorialJoinRegularGameLambdaFunction.Arn
+      ServiceRoleArn: !GetAtt awsTutorialPrivateGameLambdaFunctionDataSourceRole.Arn
+      Type: AWS_LAMBDA
+  awsTutorialOpenRegularGameDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _JoinRegularGame_DataSource
+      ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
+      Description: Data source for open regular game
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt awsTutorialOpenRegularGameLambdaFunction.Arn
+      ServiceRoleArn: !GetAtt awsTutorialPrivateGameLambdaFunctionDataSourceRole.Arn
+      Type: AWS_LAMBDA
+  awsTutorialCloseRegularGameDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _CloseRegularGame_DataSource
+      ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
+      Description: Data source for join regular game
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt awsTutorialCloseRegularGameLambdaFunction.Arn
       ServiceRoleArn: !GetAtt awsTutorialPrivateGameLambdaFunctionDataSourceRole.Arn
       Type: AWS_LAMBDA
   awsTutorialCreatePrivateGameDataSource:
@@ -618,11 +752,13 @@ Resources:
         }
         type Query @aws_cognito_user_pools {
         }
-        type Mutation @aws_cognito_user_pools {
-          CreateRegularGame(gameData: String, latencies: [Latency], playerData: String): CreateRegularGameResult
-          JoinRegularGame(gameSessionId: String!, playerData: String): JoinRegularGameResult
-          CreatePrivateGame(gameData: String, playerData: String): CreatePrivateGameResult
-          JoinPrivateGame(password: String!, playerData: String): JoinPrivateGameResult
+        type Mutation {
+          CreateRegularGame(gameData: String, latencies: [Latency], playerData: String): CreateRegularGameResult @aws_cognito_user_pools
+          JoinRegularGame(gameSessionId: String!, playerData: String): JoinRegularGameResult @aws_cognito_user_pools
+          OpenRegularGame(gameSessionId: String!) @aws_iam
+          CloseRegularGame(gameSessionId: String!) @aws_iam
+          CreatePrivateGame(gameData: String, playerData: String): CreatePrivateGameResult @aws_cognito_user_pools
+          JoinPrivateGame(password: String!, playerData: String): JoinPrivateGameResult @aws_cognito_user_pools
         }
         type Subscription @aws_cognito_user_pools {
         }
@@ -738,6 +874,50 @@ Resources:
             "username": $utils.toJson($identityValue),
             "gameSessionId": $utils.toJson($ctx.args.gameSessionId),
             "playerData": $utils.toJson($ctx.args.playerData)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+  awsTutorialPrivateGameGraphQLMutationOpenRegularGameResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialOpenRegularGameDataSource.Name
+      FieldName: OpenRegularGame
+      Kind: UNIT
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "gameSessionId": $utils.toJson($ctx.args.gameSessionId)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #else
+          $utils.toJson($ctx.result)
+        #end
+      TypeName: Mutation
+  awsTutorialPrivateGameGraphQLMutationCloseRegularGameResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
+      DataSourceName: !GetAtt awsTutorialCloseRegularGameDataSource.Name
+      FieldName: CloseRegularGame
+      Kind: UNIT
+      RequestMappingTemplate: |
+        {
+          "version": "2017-02-28",
+          "operation": "Invoke",
+          "payload": {
+            "gameSessionId": $utils.toJson($ctx.args.gameSessionId)
           }
         }
       ResponseMappingTemplate: |

@@ -318,7 +318,7 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _GetFriendStatus_Lambda
-      Description: Lambda function List Pending Friend Requests for FriendList table
+      Description: Lambda function Get Friend Status for FriendList table
       Architectures:
         - arm64
       Code:
@@ -337,7 +337,7 @@ Resources:
                   },{
                     "S": event['user'],
                   }],
-                  'Limit': 20
+                  'Limit': 1
                 }
                 response = dynamodb.execute_statement(**request_parameters)
                 if response['Items']:
@@ -357,7 +357,7 @@ Resources:
                   },{
                     "S": event['username'],
                   }],
-                  'Limit': 20
+                  'Limit': 1
                 }
                 response = dynamodb.execute_statement(**request_parameters)
                 if response['Items']:
@@ -406,37 +406,72 @@ Resources:
           import boto3
           def lambda_handler(event, context):
               friendListTableName = os.environ['TABLE_NAME']
+              fromUserTableIndex = os.environ['FromUser_Index']
+              toUserTableIndex = os.environ['ToUser_Index']
               dynamodb = boto3.client('dynamodb')
-              statement = 'select * from {0} where (toUser = ? or fromUser = ?) and friendStatus = \'sent\''.format(friendListTableName)
-              request_parameters = {
-                'Statement': statement,
-                'Parameters': [{
-                  "S": event['username'],
-                }, {
-                  "S": event['username'],
-                }],
-                'Limit': 20
-              }
-              if event['nextToken']:
-                request_parameters['NextToken'] = event['nextToken']
-              try:
-                response = dynamodb.execute_statement(**request_parameters)
-                output = {
-                  'friends': [{
-                    'toUser': user['toUser']['S'],
-                    'fromUser': user['fromUser']['S'],
-                    'friendStatus': user['friendStatus']['S'],
-                    'createdAt': int(user['createdAt'].get('N', 0)),
-                    'updatedAt': int(user['updatedAt'].get('N', 0)),
-                  } for user in response['Items']],
-                  'nextToken': response.get('NextToken', None),
+          
+              output = {
+                'friends': [],
+                'nextToken': {
+                  'fromUserToken': 'end',
+                  'toUserToken': 'end'
                 }
-                return output
-              except Exception as e:
-                raise Exception(f"Error processing request: {str(e)}")
+              }
+          
+              if not ('nextToken' in event and 'fromUserToken' in event['nextToken'] and event['nextToken']['fromUserToken'] == 'end'):
+                statement = 'select * from {0}.{1} where fromUser = ? and friendStatus = \'sent\''.format(friendListTableName, fromUserTableIndex)
+                request_parameters = {
+                  'Statement': statement,
+                  'Parameters': [{
+                    "S": event['username'],
+                  }],
+                  'Limit': 10
+                }
+                if 'nextToken' in event and 'fromUserToken' in event['nextToken']:
+                  request_parameters['NextToken'] = event['nextToken']['fromUserToken']
+                try:
+                  response = dynamodb.execute_statement(**request_parameters)
+                  output['friends'].extend([{
+                      'toUser': user['toUser']['S'],
+                      'fromUser': user['fromUser']['S'],
+                      'friendStatus': user['friendStatus']['S'],
+                      'createdAt': int(user['createdAt'].get('N', 0)),
+                      'updatedAt': int(user['updatedAt'].get('N', 0)),
+                    } for user in response['Items']])
+                  output['nextToken']['fromUserToken'] = response.get('NextToken', 'end')
+                except Exception as e:
+                  raise Exception(f"Error processing request: {str(e)}")
+          
+              if not ('nextToken' in event and 'toUserToken' in event['nextToken'] and event['nextToken']['toUserToken'] == 'end'):
+                statement = 'select * from {0}.{1} where toUser = ? and friendStatus = \'sent\''.format(friendListTableName, toUserTableIndex)
+                request_parameters = {
+                  'Statement': statement,
+                  'Parameters': [{
+                    "S": event['username'],
+                  }],
+                  'Limit': 10
+                }
+                if 'nextToken' in event and 'toUserToken' in event['nextToken']:
+                  request_parameters['NextToken'] = event['nextToken']['toUserToken']
+                try:
+                  response = dynamodb.execute_statement(**request_parameters)
+                  output['friends'].extend([{
+                      'toUser': user['toUser']['S'],
+                      'fromUser': user['fromUser']['S'],
+                      'friendStatus': user['friendStatus']['S'],
+                      'createdAt': int(user['createdAt'].get('N', 0)),
+                      'updatedAt': int(user['updatedAt'].get('N', 0)),
+                    } for user in response['Items']])
+                  output['nextToken']['toUserToken'] = response.get('NextToken', 'end')
+                except Exception as e:
+                  raise Exception(f"Error processing request: {str(e)}")
+          
+              return output
       Environment:
         Variables:
           TABLE_NAME: !Ref awsTutorialFriendListDynamoDBTable
+          FromUser_Index: byFromUser
+          ToUser_Index: byToUser
       Handler: index.lambda_handler
       MemorySize: 256
       Role: !GetAtt awsTutorialFriendListLambdaFunctionRole.Arn
@@ -462,36 +497,69 @@ Resources:
           def lambda_handler(event, context):
               friendListTableName = os.environ['TABLE_NAME']
               dynamodb = boto3.client('dynamodb')
-              statement = 'select * from {0} where (toUser = ? or fromUser = ?) and friendStatus = \'accepted\''.format(friendListTableName)
-              request_parameters = {
-                'Statement': statement,
-                'Parameters': [{
-                  "S": event['username'],
-                }, {
-                  "S": event['username'],
-                }],
-                'Limit': 20
-              }
-              if event['nextToken']:
-                request_parameters['NextToken'] = event['nextToken']
-              try:
-                response = dynamodb.execute_statement(**request_parameters)
-                output = {
-                  'friends': [{
-                    'toUser': user['toUser']['S'],
-                    'fromUser': user['fromUser']['S'],
-                    'friendStatus': user['friendStatus']['S'],
-                    'createdAt': int(user['createdAt'].get('N', 0)),
-                    'updatedAt': int(user['updatedAt'].get('N', 0)),
-                  } for user in response['Items']],
-                  'nextToken': response.get('NextToken', None),
+          
+              output = {
+                'friends': [],
+                'nextToken': {
+                  'fromUserToken': 'end',
+                  'toUserToken': 'end'
                 }
-                return output
-              except Exception as e:
-                raise Exception(f"Error processing request: {str(e)}")
+              }
+          
+              if not ('nextToken' in event and 'fromUserToken' in event['nextToken'] and event['nextToken']['fromUserToken'] == 'end'):
+                statement = 'select * from {0}.{1} where fromUser = ? and friendStatus = \'accepted\''.format(friendListTableName, fromUserTableIndex)
+                request_parameters = {
+                  'Statement': statement,
+                  'Parameters': [{
+                    "S": event['username'],
+                  }],
+                  'Limit': 10
+                }
+                if 'nextToken' in event and 'fromUserToken' in event['nextToken']:
+                  request_parameters['NextToken'] = event['nextToken']['fromUserToken']
+                try:
+                  response = dynamodb.execute_statement(**request_parameters)
+                  output['friends'].extend([{
+                      'toUser': user['toUser']['S'],
+                      'fromUser': user['fromUser']['S'],
+                      'friendStatus': user['friendStatus']['S'],
+                      'createdAt': int(user['createdAt'].get('N', 0)),
+                      'updatedAt': int(user['updatedAt'].get('N', 0)),
+                    } for user in response['Items']])
+                  output['nextToken']['fromUserToken'] = response.get('NextToken', 'end')
+                except Exception as e:
+                  raise Exception(f"Error processing request: {str(e)}")
+          
+              if not ('nextToken' in event and 'toUserToken' in event['nextToken'] and event['nextToken']['toUserToken'] == 'end'):
+                statement = 'select * from {0}.{1} where toUser = ? and friendStatus = \'accepted\''.format(friendListTableName, toUserTableIndex)
+                request_parameters = {
+                  'Statement': statement,
+                  'Parameters': [{
+                    "S": event['username'],
+                  }],
+                  'Limit': 10
+                }
+                if 'nextToken' in event and 'toUserToken' in event['nextToken']:
+                  request_parameters['NextToken'] = event['nextToken']['toUserToken']
+                try:
+                  response = dynamodb.execute_statement(**request_parameters)
+                  output['friends'].extend([{
+                      'toUser': user['toUser']['S'],
+                      'fromUser': user['fromUser']['S'],
+                      'friendStatus': user['friendStatus']['S'],
+                      'createdAt': int(user['createdAt'].get('N', 0)),
+                      'updatedAt': int(user['updatedAt'].get('N', 0)),
+                    } for user in response['Items']])
+                  output['nextToken']['toUserToken'] = response.get('NextToken', 'end')
+                except Exception as e:
+                  raise Exception(f"Error processing request: {str(e)}")
+          
+              return output
       Environment:
         Variables:
           TABLE_NAME: !Ref awsTutorialFriendListDynamoDBTable
+          FromUser_Index: byFromUser
+          ToUser_Index: byToUser
       Handler: index.lambda_handler
       MemorySize: 256
       Role: !GetAtt awsTutorialFriendListLambdaFunctionRole.Arn
@@ -743,10 +811,7 @@ Resources:
                 Effect: Allow
                 Action:
                   - dynamodb:DeleteItem
-                  - dynamodb:GetItem
                   - dynamodb:PutItem
-                  - dynamodb:Query
-                  - dynamodb:Scan
                   - dynamodb:UpdateItem
                 Resource:
                   - !GetAtt awsTutorialFriendListDynamoDBTable.Arn
@@ -871,13 +936,21 @@ Resources:
           createdAt: Int
           updatedAt: Int
         }
+        input ListFriendsNextTokenInput @aws_cognito_user_pools {
+          fromUserToken: String
+          toUserToken: String
+        }
+        type ListFriendsNextToken @aws_cognito_user_pools {
+          fromUserToken: String
+          toUserToken: String
+        }
         type ListFriendsResult @aws_cognito_user_pools {
           friends: [Friend]
-          nextToken: String
+          nextToken: ListFriendsNextToken
         }
         type Query @aws_cognito_user_pools {
-          listPendingFriendRequests(nextToken: String): ListFriendsResult
-          listFriends(nextToken: String): ListFriendsResult
+          listPendingFriendRequests(nextToken: ListFriendsNextTokenInput): ListFriendsResult
+          listFriends(nextToken: ListFriendsNextTokenInput): ListFriendsResult
           getUser(username: String!): GetUserResult
         }
         type Mutation @aws_cognito_user_pools {

@@ -75,6 +75,25 @@ Resources:
         ObjectVersion: !Ref GameServerBuildObjectVersion
         RoleArn: !GetAtt awsTutorialGameLiftRole.Arn
       Version: !Ref GameServerBuildVersion
+  awsTutorialGameLiftFleetInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _GameLift_FleetInstance_Role
+      Description: Role for AWS GameLift service fleet instance
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - gamelift.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
   awsTutorialFleet:
     Type: AWS::GameLift::Fleet
     Properties:
@@ -95,6 +114,8 @@ Resources:
           Protocol: UDP
       EC2InstanceType: c6g.medium
       FleetType: SPOT
+      InstanceRoleARN: !GetAtt awsTutorialGameLiftFleetInstanceRole.Arn
+      InstanceRoleCredentialsProvider: SHARED_CREDENTIAL_FILE
       Locations:
         - Location: !Ref AWS::Region
           LocationCapacity:
@@ -161,6 +182,11 @@ Metadata:
         - awsTutorialFleet
         - awsTutorialAlias
 Outputs:
+  awsTutorialFleetInstanceRoleName:
+    Description: GameLift Fleet Instance Role Name
+    Value: !Ref awsTutorialGameLiftFleetInstanceRole
+    Export:
+      Name: !Sub 'awsTutorialFleetInstanceRoleName'
   awsTutorialFleetId:
     Description: GameLift Fleet ID
     Value: !Ref awsTutorialFleet
@@ -176,3 +202,8 @@ Outputs:
     Value: !GetAtt awsTutorialGameSessionQueue.Name
     Export:
       Name: !Sub 'awsTutorialGameSessionQueueName'
+  awsTutorialGameSessionQueueArn:
+    Description: GameLift Game Session Queue Arn
+    Value: !GetAtt awsTutorialGameSessionQueue.Arn
+    Export:
+      Name: !Sub 'awsTutorialGameSessionQueueArn'
