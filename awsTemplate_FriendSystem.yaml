@@ -427,7 +427,7 @@ Resources:
                   }],
                   'Limit': 10
                 }
-                if 'nextToken' in event and 'fromUserToken' in event['nextToken']:
+                if 'nextToken' in event and 'fromUserToken' in event['nextToken'] and event['nextToken']['fromUserToken']:
                   request_parameters['NextToken'] = event['nextToken']['fromUserToken']
                 try:
                   response = dynamodb.execute_statement(**request_parameters)
@@ -451,7 +451,7 @@ Resources:
                   }],
                   'Limit': 10
                 }
-                if 'nextToken' in event and 'toUserToken' in event['nextToken']:
+                if 'nextToken' in event and 'toUserToken' in event['nextToken'] and event['nextToken']['toUserToken']:
                   request_parameters['NextToken'] = event['nextToken']['toUserToken']
                 try:
                   response = dynamodb.execute_statement(**request_parameters)
@@ -496,6 +496,8 @@ Resources:
           import boto3
           def lambda_handler(event, context):
               friendListTableName = os.environ['TABLE_NAME']
+              fromUserTableIndex = os.environ['FromUser_Index']
+              toUserTableIndex = os.environ['ToUser_Index']
               dynamodb = boto3.client('dynamodb')
           
               output = {
@@ -515,7 +517,7 @@ Resources:
                   }],
                   'Limit': 10
                 }
-                if 'nextToken' in event and 'fromUserToken' in event['nextToken']:
+                if 'nextToken' in event and 'fromUserToken' in event['nextToken'] and event['nextToken']['fromUserToken']:
                   request_parameters['NextToken'] = event['nextToken']['fromUserToken']
                 try:
                   response = dynamodb.execute_statement(**request_parameters)
@@ -539,7 +541,7 @@ Resources:
                   }],
                   'Limit': 10
                 }
-                if 'nextToken' in event and 'toUserToken' in event['nextToken']:
+                if 'nextToken' in event and 'toUserToken' in event['nextToken'] and event['nextToken']['toUserToken']:
                   request_parameters['NextToken'] = event['nextToken']['toUserToken']
                 try:
                   response = dynamodb.execute_statement(**request_parameters)

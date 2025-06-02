@@ -36,11 +36,11 @@ Resources:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - _Matchmaking_RuleSet
+          - -Matchmaking-RuleSet
 #     use 10 times waitTimeSeconds
       RuleSetBody: !Sub |
         {
-          "name": "${ResourceNamePrefix}_Matchmaking_RuleSet",
+          "name": "${ResourceNamePrefix}-Matchmaking-RuleSet",
           "ruleLanguageVersion": "1.0",
           "playerAttributes": [{
             "name": "rate",
@@ -55,7 +55,7 @@ Resources:
           }],
           "rules": [{
             "name": "fair_rate",
-            "description": "Favor players with similar rate."
+            "description": "Favor players with similar rate.",
             "type": "distanceSort",
             "sortDirection": "ascending",
             "sortAttribute": "rate"
@@ -71,36 +71,37 @@ Resources:
               "waitTimeSeconds": 1,
               "value": 100
             }, {
-              "waitTimeSeconds": 2,
+              "waitTimeSeconds": 3,
               "value": 150
             }, {
-              "waitTimeSeconds": 3,
+              "waitTimeSeconds": 5,
               "value": 1000
             }, {
-              "waitTimeSeconds": 2,
+              "waitTimeSeconds": 7,
               "value": 9999
             }]
           }, {
             "target": "teams[team].maxPlayers",
             "steps": [{
-              "waitTimeSeconds": 1,
+              "waitTimeSeconds": 2,
               "value": 3
             }, {
-              "waitTimeSeconds": 2,
+              "waitTimeSeconds": 4,
               "value": 2
             }, {
-              "waitTimeSeconds": 3,
+              "waitTimeSeconds": 6,
               "value": 1
-            }, {
+            }]
+          }, {
             "target": "teams[team].minPlayers",
             "steps": [{
-              "waitTimeSeconds": 1,
+              "waitTimeSeconds": 2,
               "value": 3
             }, {
-              "waitTimeSeconds": 2,
+              "waitTimeSeconds": 4,
               "value": 2
             }, {
-              "waitTimeSeconds": 3,
+              "waitTimeSeconds": 6,
               "value": 1
             }]
           }]
@@ -116,7 +117,7 @@ Resources:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - _Matchmaking_Configuration
+          - -Matchmaking-Configuration
       Description: Matchmaking Configuration for GameLift Matchmaking
       AcceptanceRequired: FALSE
       BackfillMode: MANUAL
@@ -146,18 +147,18 @@ Resources:
           AttributeType: S
         - AttributeName: GameSessionId
           AttributeType: S
-        - AttributeName: CreateTime
-          AttributeType: N
+#        - AttributeName: CreateTime
+#          AttributeType: N
         - AttributeName: UpdateTime
           AttributeType: N
-        - AttributeName: ExpireTime
-          AttributeType: N
-        - AttributeName: Team
-          AttributeType: S
-        - AttributeName: WinnerTeam
-          AttributeType: S
-        - AttributeName: Rate
-          AttributeType: N
+#        - AttributeName: ExpireTime
+#          AttributeType: N
+#        - AttributeName: Team
+#          AttributeType: S
+#        - AttributeName: WinnerTeam
+#          AttributeType: S
+#        - AttributeName: Rate
+#          AttributeType: N
       BillingMode: PAY_PER_REQUEST
       DeletionProtectionEnabled: false
       OnDemandThroughput:
@@ -196,9 +197,6 @@ Resources:
               - WinnerTeam
               - Rate
             ProjectionType: INCLUDE
-          OnDemandThroughput:
-            MaxReadRequestUnits: 1
-            MaxWriteRequestUnits: 1
       TimeToLiveSpecification:
         AttributeName: ExpireTime
         Enabled: True
@@ -483,7 +481,7 @@ Resources:
                   rate = 0
                 elif 'Rate' not in response['Items'][0]:
                   rate = 0
-                else
+                else:
                   rate = int(response['Items'][0]['Rate']['N'])
           
                 request_parameters['Players'].append({
@@ -497,7 +495,7 @@ Resources:
                     latency['regionIdentifier']:latency['latencyInMilliseconds'] for latency in player['latency']}
                 })
           
-              if len(request_parameters['Players']) = 0:
+              if len(request_parameters['Players']) == 0:
                 raise Exception(f"there is no enough player in the request to start matchmaking: {event}")
           
               response = gamelift.start_matchmaking(**request_parameters)
@@ -599,7 +597,7 @@ Resources:
         - ''
         -   - !Ref ResourceNamePrefix
             - _StopMatchmaking_Lambda
-      Description: Lambda function Describe matchmaking
+      Description: Lambda function Stop matchmaking
       Architectures:
         - arm64
       Code:
@@ -691,14 +689,14 @@ Resources:
               Effect: Allow
               Resource:
                 - !Ref awsTutorialMatchmakingGraphQLApi
-  awsTutorialMatchmakingResultDataSourceRole:
+  awsTutorialMatchmakingWeaponRateDataSourceRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - _Matchmaking_DataSource_Role
-      Description: Role for AWS Graphql Api Matchmaking Data Source
+          - _Matchmaking_GetWeaponRate_DataSource_Role
+      Description: Role for AWS Graphql Api Matchmaking Weapon Rate Data Source
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -711,7 +709,7 @@ Resources:
         - PolicyName: !Join
             - ''
             - - !Ref ResourceNamePrefix
-              - _Matchmaking_DataSource_Policy
+              - _Matchmaking_WeaponRate_DataSource_Policy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -740,7 +738,7 @@ Resources:
       DynamoDBConfig:
         AwsRegion: !Ref AWS::Region
         TableName: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
-      ServiceRoleArn: !GetAtt awsTutorialMatchmakingResultDataSourceRole.Arn
+      ServiceRoleArn: !GetAtt awsTutorialMatchmakingWeaponRateDataSourceRole.Arn
       Type: AMAZON_DYNAMODB
   awsTutorialMatchmakingLambdaFunctionDataSourceRole:
     Type: AWS::IAM::Role
@@ -748,8 +746,8 @@ Resources:
       RoleName: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - _Matchmaking_DataSource_Role
-      Description: Role for AWS Graphql Api Matchmaking Data Source
+          - _Matchmaking_LambdaFunction_DataSource_Role
+      Description: Role for AWS Graphql Api Matchmaking Lambda Function Data Source
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -762,11 +760,11 @@ Resources:
         - PolicyName: !Join
             - ''
             - - !Ref ResourceNamePrefix
-              - _Matchmaking_DataSource_Policy
+              - _Matchmaking_LambdaFunction_DataSource_Policy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Sid: MatchmakingDataSourcePolicy
+              - Sid: MatchmakingLambdaFunctionDataSourcePolicy
                 Effect: Allow
                 Action:
                   - lambda:InvokeFunction
@@ -898,12 +896,12 @@ Resources:
           DescribeMatchmakingServer(ticketId: String!): DescribeMatchmakingResult @aws_iam
         }
         type Mutation {
-          InsertMatch(gameSessionId: String!, team: [Team]!) @aws_iam
-          UpdateMatchResult(gameSessionId: String!, winner: String!) @aws_iam
+          InsertMatch(gameSessionId: String!, team: [Team]!): Boolean @aws_iam
+          UpdateMatchResult(gameSessionId: String!, winner: String!): Boolean @aws_iam
           StartMatchmaking(weapon: String!, latency: [Latency]!): StartMatchmakingResult @aws_cognito_user_pools
           StartMatchmakingServer(players: [StartMatchmakingPlayer]!): StartMatchmakingResult @aws_iam
-          StopMatchmaking(ticketId: String!) @aws_cognito_user_pools
-          StopMatchmakingServer(ticketId: String!) @aws_iam
+          StopMatchmaking(ticketId: String!): Boolean @aws_cognito_user_pools
+          StopMatchmakingServer(ticketId: String!): Boolean @aws_iam
         }
         type Subscription @aws_cognito_user_pools {
         }
@@ -996,8 +994,9 @@ Resources:
       ResponseMappingTemplate: |
         #if($ctx.error)
           $util.error($ctx.error.message, $ctx.error.type)
+          false
         #else
-          $utils.toJson($ctx.result)
+          true
         #end
       TypeName: Mutation
   awsTutorialMatchmakingGraphQLMutationUpdateMatchResultResolver:
@@ -1019,8 +1018,9 @@ Resources:
       ResponseMappingTemplate: |
         #if($ctx.error)
           $util.error($ctx.error.message, $ctx.error.type)
+          false
         #else
-          $utils.toJson($ctx.result)
+          true
         #end
       TypeName: Mutation
   awsTutorialMatchmakingGraphQLMutationStartMatchmakingResolver:
@@ -1243,8 +1243,10 @@ Resources:
       ResponseMappingTemplate: |
         #if($ctx.error)
           $util.error($ctx.error.message, $ctx.error.type)
+          false
         #else
           $utils.toJson($ctx.result)
+          true
         #end
       TypeName: Mutation
   awsTutorialMatchmakingGraphQLMutationStopMatchmakingServerResolver:
@@ -1265,8 +1267,10 @@ Resources:
       ResponseMappingTemplate: |
         #if($ctx.error)
           $util.error($ctx.error.message, $ctx.error.type)
+          false
         #else
           $utils.toJson($ctx.result)
+          true
         #end
       TypeName: Mutation
 Outputs:

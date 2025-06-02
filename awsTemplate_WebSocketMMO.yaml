@@ -80,10 +80,6 @@ Resources:
   awsTutorialWebSocketMMOEC2Subnet:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Select
-        - 0
-        - !GetAZs
-          Ref: AWS::Region
       CidrBlock: 10.0.1.0/24
       MapPublicIpOnLaunch: false
       VpcId: !Ref awsTutorialWebSocketMMOEC2VPC
@@ -187,10 +183,6 @@ Resources:
   awsTutorialWebSocketMMOEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      AvailabilityZone: !Select
-        - 0
-        - !GetAZs
-          Ref: AWS::Region
       LaunchTemplate:
         LaunchTemplateId: !Ref awsTutorialWebSocketMMOEC2LaunchTemplate
         Version: !GetAtt awsTutorialWebSocketMMOEC2LaunchTemplate.DefaultVersionNumber

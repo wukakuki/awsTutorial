@@ -187,6 +187,11 @@ Outputs:
     Value: !Ref awsTutorialGameLiftFleetInstanceRole
     Export:
       Name: !Sub 'awsTutorialFleetInstanceRoleName'
+  awsTutorialFleetInstanceRoleArn:
+    Description: GameLift Fleet Instance Role Arn
+    Value: !GetAtt awsTutorialGameLiftFleetInstanceRole.Arn
+    Export:
+      Name: !Sub 'awsTutorialFleetInstanceRoleArn'
   awsTutorialFleetId:
     Description: GameLift Fleet ID
     Value: !Ref awsTutorialFleet

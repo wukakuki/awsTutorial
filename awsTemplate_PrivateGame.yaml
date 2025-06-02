@@ -35,12 +35,28 @@ Parameters:
   GameLiftGameSessionQueueName:
     Description: Game Session Queue Name of the GameLift queue which is used to create regular game session
     Type: String
+  MatchmakingGraphQLRegion:
+    Description: region of matchmaking graphql
+    Type: String
+    Default: ""
+  MatchmakingGraphQLEndpoint:
+    Description: endpoint of matchmaking graphql
+    Type: String
+    Default: ""
+  MatchmakingGraphQLHost:
+    Description: host of matchmaking graphql
+    Type: String
+    Default: ""
   WSMMOHost:
     Description: host of websocket based MMO system
     Type: String
     Default: ""
   GameLiftFleetInstanceRoleName:
     Description: role name of gamelift fleet instance role
+    Type: String
+    Default: ""
+  GameLiftFleetInstanceRoleArn:
+    Description: role arn of gamelift fleet instance role
     Type: String
     Default: ""
 Resources:
@@ -86,6 +102,8 @@ Resources:
           Value: Youtube Streamer
   awsTutorialCreateRegularGameLambdaFunction:
     Type: AWS::Lambda::Function
+    DependsOn:
+      - awsTutorialPrivateGameGraphQLApi
     Properties:
       FunctionName: !Join
         - ''
@@ -104,6 +122,13 @@ Resources:
             gameSessionQueueName = os.environ['GAME_SESSION_QUEUE_NAME']
             maxPlayerNum = os.environ['MAX_PLAYER_NUM']
             wsMmoHost = os.environ['WSMMOHOST']
+            gameLiftFleetInstanceRoleArn = os.environ['GAMELIFT_FLEETINSTANCE_ROLEARN']
+            matchmakingGraphQLRegion = os.environ['MATCHMAKING_GRAPHQL_Region']
+            matchmakingGraphQLEndpoint = os.environ['MATCHMAKING_GRAPHQL_ENDPOINT']
+            matchmakingGraphQLHost = os.environ['MATCHMAKING_GRAPHQL_HOST']
+            privateGameGraphQLRegion = os.environ['PRIVATEGAME_GRAPHQL_Region']
+            privateGameGraphQLEndpoint = os.environ['PRIVATEGAME_GRAPHQL_ENDPOINT']
+            privateGameGraphQLHost = os.environ['PRIVATEGAME_GRAPHQL_HOST']
             gamelift = boto3.client('gamelift')
             try:
               uuid4 = str(uuid.uuid4())
@@ -133,6 +158,36 @@ Resources:
                   'Value': wsMmoHost
                 })
           
+              if matchmakingGraphQLRegion and matchmakingGraphQLEndpoint and matchmakingGraphQLHost:
+                request_parameters['GameProperties'] += [{
+                  'Key': 'MatchmakingGraphQLRegion',
+                  'Value': matchmakingGraphQLRegion
+                }, {
+                  'Key': 'MatchmakingGraphQLEndpoint',
+                  'Value': matchmakingGraphQLEndpoint
+                }, {
+                  'Key': 'MatchmakingGraphQLHost',
+                  'Value': matchmakingGraphQLHost
+                }]
+          
+              if privateGameGraphQLRegion and privateGameGraphQLEndpoint and privateGameGraphQLHost:
+                request_parameters['GameProperties'] += [{
+                  'Key': 'PrivateGameGraphQLRegion',
+                  'Value': privateGameGraphQLRegion
+                }, {
+                  'Key': 'PrivateGameGraphQLEndpoint',
+                  'Value': privateGameGraphQLEndpoint
+                }, {
+                  'Key': 'PrivateGameGraphQLHost',
+                  'Value': privateGameGraphQLHost
+                }]
+          
+              if gameLiftFleetInstanceRoleArn:
+                request_parameters['GameProperties'].append({
+                  'Key': 'GameLiftFleetInstanceRoleArn',
+                  'Value': gameLiftFleetInstanceRoleArn
+                })
+          
               if 'latencies' in event and len(event['latencies']) > 0:
                 request_parameters['PlayerLatencies'] = [{
                   'PlayerId': event['username'],
@@ -154,6 +209,13 @@ Resources:
           GAME_SESSION_QUEUE_NAME: !Ref GameLiftGameSessionQueueName
           MAX_PLAYER_NUM: !Ref GameLiftRegularGameSessionMaxPlayerNum
           WSMMOHOST: !Ref WSMMOHost
+          GAMELIFT_FLEETINSTANCE_ROLEARN: !Ref GameLiftFleetInstanceRoleArn
+          MATCHMAKING_GRAPHQL_Region: !Ref MatchmakingGraphQLRegion
+          MATCHMAKING_GRAPHQL_ENDPOINT: !Ref MatchmakingGraphQLEndpoint
+          MATCHMAKING_GRAPHQL_HOST: !Ref MatchmakingGraphQLHost
+          PRIVATEGAME_GRAPHQL_Region: !Ref AWS::Region
+          PRIVATEGAME_GRAPHQL_ENDPOINT: !GetAtt awsTutorialPrivateGameGraphQLApi.GraphQLUrl
+          PRIVATEGAME_GRAPHQL_HOST: !GetAtt awsTutorialPrivateGameGraphQLApi.GraphQLDns
       Handler: index.lambda_handler
       # LoggingConfig:
       #   LogFormat: Text
@@ -656,7 +718,7 @@ Resources:
       Name: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - _JoinRegularGame_DataSource
+          - _OpenRegularGame_DataSource
       ApiId: !GetAtt awsTutorialPrivateGameGraphQLApi.ApiId
       Description: Data source for open regular game
       LambdaConfig:
@@ -755,8 +817,8 @@ Resources:
         type Mutation {
           CreateRegularGame(gameData: String, latencies: [Latency], playerData: String): CreateRegularGameResult @aws_cognito_user_pools
           JoinRegularGame(gameSessionId: String!, playerData: String): JoinRegularGameResult @aws_cognito_user_pools
-          OpenRegularGame(gameSessionId: String!) @aws_iam
-          CloseRegularGame(gameSessionId: String!) @aws_iam
+          OpenRegularGame(gameSessionId: String!): Boolean @aws_iam
+          CloseRegularGame(gameSessionId: String!): Boolean @aws_iam
           CreatePrivateGame(gameData: String, playerData: String): CreatePrivateGameResult @aws_cognito_user_pools
           JoinPrivateGame(password: String!, playerData: String): JoinPrivateGameResult @aws_cognito_user_pools
         }
@@ -901,8 +963,9 @@ Resources:
       ResponseMappingTemplate: |
         #if($ctx.error)
           $util.error($ctx.error.message, $ctx.error.type)
+          false
         #else
-          $utils.toJson($ctx.result)
+          true
         #end
       TypeName: Mutation
   awsTutorialPrivateGameGraphQLMutationCloseRegularGameResolver:
@@ -923,8 +986,9 @@ Resources:
       ResponseMappingTemplate: |
         #if($ctx.error)
           $util.error($ctx.error.message, $ctx.error.type)
+          false
         #else
-          $utils.toJson($ctx.result)
+          true
         #end
       TypeName: Mutation
   awsTutorialPrivateGameGraphQLMutationCreatePrivateGameResolver:
