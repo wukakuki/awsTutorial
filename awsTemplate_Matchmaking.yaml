@@ -440,6 +440,9 @@ Resources:
           import os
           import time
           import boto3
+          from datetime import datetime, timedelta
+          import uuid
+          import json
           
           def lambda_handler(event, context):
             teamAssignmentTableName = os.environ['TEAM_ASSIGNMENT_TABLE_NAME']
@@ -462,12 +465,12 @@ Resources:
           
               for player in event['players']:
                 if any(key not in player for key in ['username', 'weapon', 'latency']):
-                  print('username or weapon info is missing in {player}')
+                  print('username or weapon info or latency is missing in {player}')
                   continue
           
                 rate = 0
                 statement = 'select * from {0}.{1} where PlayerName_Weapon = ? and UpdateTime > ? order by UpdateTime desc'.format(teamAssignmentTableName, weaponTableIndex)
-                request_parameters = {
+                query_request_parameters = {
                   'Statement': statement,
                   'Parameters': [{
                     "S": player['username'] + ' ' + player['weapon'],
@@ -476,7 +479,7 @@ Resources:
                   }],
                   'Limit': 1
                 }
-                response = dynamodb.execute_statement(**request_parameters)
+                response = dynamodb.execute_statement(**query_request_parameters)
                 if 'Items' not in response or len(response['Items']) == 0:
                   rate = 0
                 elif 'Rate' not in response['Items'][0]:
@@ -489,10 +492,14 @@ Resources:
                   'PlayerAttributes': {
                     'rate': {
                       'N': rate
+                    },
+                    'playerData': {
+                      'S': json.dumps({'id': player['weapon']})
+                      
                     }
                   },
                   'LatencyInMs': {
-                    latency['regionIdentifier']:latency['latencyInMilliseconds'] for latency in player['latency']}
+                    latency['regionIdentifier']:int(latency['latencyInMilliseconds']) if latency['latencyInMilliseconds'] > 1 else 1 for latency in player['latency']}
                 })
           
               if len(request_parameters['Players']) == 0:
@@ -504,7 +511,7 @@ Resources:
                 raise Exception(f"start matchmaking failed, ticket id is missing in the response.")
                 
               output = {
-                'TicketId': response['MatchmakingTicket']['TicketId']
+                'ticketId': response['MatchmakingTicket']['TicketId']
               }
               
               return output
@@ -559,17 +566,18 @@ Resources:
           
               output = {
                 'Status': response['TicketList'][0]['Status'],
-                'StatusReason': response['TicketList'][0]['StatusReason'],
-                'StatusMessage': response['TicketList'][0]['StatusMessage'],
-                'EstimatedWaitTime': response['TicketList'][0]['EstimatedWaitTime'],
-                'GameSessionConnectionInfo': response['TicketList'][0]['GameSessionConnectionInfo']
+                'StatusReason': response['TicketList'][0].get('StatusReason', 'unknown reason'),
+                'StatusMessage': response['TicketList'][0].get('StatusMessage', 'unknown'),
+                'EstimatedWaitTime': response['TicketList'][0].get('EstimatedWaitTime', 0),
+                'GameSessionConnectionInfo': response['TicketList'][0].get('GameSessionConnectionInfo', None)
               }
           
               if 'username' in event:
                 if not any(player['PlayerId'] == event['username'] for player in response['TicketList'][0]['Players']):
                   raise Exception(f"ticket id is not belong to this user.")
-                  
-                output['GameSessionConnectionInfo']['MatchedPlayerSessions'][:] = [playerSession for playerSession in output['GameSessionConnectionInfo']['MatchedPlayerSessions'] if playerSession['PlayerId'] == event['username']]
+                
+                if output['GameSessionConnectionInfo'] is not None:
+                  output['GameSessionConnectionInfo']['MatchedPlayerSessions'][:] = [playerSession for playerSession in output['GameSessionConnectionInfo']['MatchedPlayerSessions'] if playerSession['PlayerId'] == event['username']]
           
               return output
             except Exception as e:
@@ -689,6 +697,10 @@ Resources:
               Effect: Allow
               Resource:
                 - !Ref awsTutorialMatchmakingGraphQLApi
+                - !Join
+                  - ''
+                  -  - !Ref awsTutorialMatchmakingGraphQLApi
+                     - /*
   awsTutorialMatchmakingWeaponRateDataSourceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -852,19 +864,19 @@ Resources:
           mutation: Mutation
           subscription: Subscription
         }
-        input Player @aws_iam {
+        input Player {
           username: String!
           weapon: String!
         }
-        input Team @aws_iam {
+        input Team {
           red: [Player]!
           blue: [Player]!
         }
-        input Latency @aws_cognito_user_pools @aws_iam {
+        input Latency {
           regionIdentifier: String!
           latencyInMilliseconds: Float!
         }
-        input StartMatchmakingPlayer @aws_iam {
+        input StartMatchmakingPlayer {
           username: String!
           weapon: String!
           latency: [Latency]!
@@ -881,7 +893,7 @@ Resources:
           IpAddress: String!
           DnsName: String!
           Port: Int!
-          MatchedPlayerSessions: [MatchedPlayerSession]!
+          MatchedPlayerSessions: [MatchedPlayerSession]
         }
         type DescribeMatchmakingResult @aws_cognito_user_pools @aws_iam {
           Status: String!
@@ -1074,7 +1086,7 @@ Resources:
             "players": [{
               "username": $utils.toJson($identityValue),
               "weapon": $utils.toJson($ctx.args.weapon),
-              "latency": $utils.toJson($ctx.args.latencies),
+              "latency": $utils.toJson($ctx.args.latency),
             }]
           }
         }

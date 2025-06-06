@@ -648,6 +648,10 @@ Resources:
               Effect: Allow
               Resource:
                 - !Ref awsTutorialPrivateGameGraphQLApi
+                - !Join
+                  - ''
+                  -  - !Ref awsTutorialPrivateGameGraphQLApi
+                     - /*
   awsTutorialPrivateGameLambdaFunctionDataSourceRole:
     Type: AWS::IAM::Role
     Properties:

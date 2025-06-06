@@ -78,10 +78,11 @@ Resources:
   awsTutorialGameLiftFleetInstanceRole:
     Type: AWS::IAM::Role
     Properties:
+# can't use _ in fleet instance role name. role name regex: [a-zA-Z0-9:/-]+
       RoleName: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - _GameLift_FleetInstance_Role
+          - -GameLift-FleetInstance-Role
       Description: Role for AWS GameLift service fleet instance
       AssumeRolePolicyDocument:
         Statement:
