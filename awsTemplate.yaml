@@ -68,7 +68,7 @@ Parameters:
   GameServerBuildServerSdkVersion:
     Description: The server sdk version of the game server build file.
     Type: String
-    Default: 5.2.0
+    Default: 5.3.0
   GameServerBuildVersion:
     Description: Version of the game server build.
     Type: String
