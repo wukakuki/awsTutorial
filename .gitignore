@@ -19,3 +19,4 @@ initiate_build_linux.sh
 initiate_build_linux_debug_checksum.sh
 PackExampleProject.sh
 /IOS
+/Linux

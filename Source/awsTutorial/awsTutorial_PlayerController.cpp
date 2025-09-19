@@ -5,6 +5,7 @@
 #include "awsTutorial_PlayerController.h"
 
 #include <Net/Core/Connection/NetCloseResult.h>
+#include <Engine/NetConnection.h>
 
 FString AAwsTutorial_PlayerController::GetRequestURL() const {
 	UNetConnection* netConnection = GetNetConnection();
@@ -36,9 +37,25 @@ FString AAwsTutorial_PlayerController::GetRequestOption(const FString& key) cons
 	return FString(o);
 }
 
-void AAwsTutorial_PlayerController::Kick_Implementation() {
+using FKickResult = UE::Net::TNetResult<EKickResult>;
+
+const TCHAR* LexToString(EKickResult Enum) {
+	switch (Enum) {
+		case EKickResult::Unknown: return TEXT("Unknown");
+		case EKickResult::Success: return TEXT("Success");
+		case EKickResult::Extended: return TEXT("Extended");
+		case EKickResult::Unauthorized: return TEXT("Unauthorized");
+	}
+	return TEXT("Unknown");
+}
+
+void AAwsTutorial_PlayerController::Kick_Implementation(EKickResult InResult, const FString& InErrorContext) {
 	UNetConnection* netConnection = GetNetConnection();
 	if (netConnection == NULL) return;
 
-	netConnection->Close(UE::Net::FNetCloseResult());
+	netConnection->Close(FKickResult(InResult, InErrorContext));
+}
+
+void AAwsTutorial_PlayerController::GotDisconnected_Implementation() {
+
 }

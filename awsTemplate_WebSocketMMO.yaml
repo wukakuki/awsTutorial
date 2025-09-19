@@ -66,6 +66,81 @@ Parameters:
     Description: Seconds between two position update. (Set to 0 to make realtime MMO system)
     Type: Number
     Default: 5
+  MinSendInvitationRate:
+    Description: Seconds between two invitation send. (Set to 0 to make it unlimited)
+    Type: Number
+    Default: 1
+  InvitationExpire:
+    Description: Seconds between a invitation expired.
+    Type: Number
+    Default: 15
+  PartyMaximumRoomNumber:
+    Description: how many clients can join a party at the same time.
+    Type: Number
+    Default: 4
+  PrivatePartyMaximumRoomNumber:
+    Description: how many clients can join a private party at the same time.
+    Type: Number
+    Default: 16
+  RoomManagerShardNumber:
+    Description: the number of room manager shard. (should be equal to the number of vcpu to get best performance)
+    Type: Number
+    Default: 16
+  PartyManagerShardNumber:
+    Description: the number of party manager shard. (should be equal to the number of vcpu to get best performance)
+    Type: Number
+    Default: 16
+  PrivatePartyPasscodeRefillThreshold:
+    Description: when the number of available passcode in a private party is less than this value, the passcode will be refilled.
+    Type: Number
+    Default: 16
+  PrivatePartyPasscodeRefillSize:
+    Description: the number of passcode will be refilled when the number of available passcode in a private party is less than PrivatePartyPasscodeRefillThreshold.
+    Type: Number
+    Default: 5000
+  PrivatePartyPasscodeLength:
+    Description: the length of passcode in a private party.
+    Type: Number
+    Default: 6
+  GameSessionMaximumPlayerSessionCount:
+    Description: the maximum number of player session in a game session of private party.
+    Type: Number
+    Default: 8
+  GameSessionQueueName:
+    Description: the name of game session queue.
+    Type: String
+  GameSessionPlacementQueryInterval:
+    Description: the interval between two game session placement query.
+    Type: Number
+    Default: 5
+  TeamAssignmentTableName:
+    Description: the name of team assignment table.
+    Type: String
+    Default: 'awsTutorial_Matchmaking_MatchTeamAssignment_DynamoDB_Table'
+  WeaponIndex:
+    Description: the index name of weapon result index in dynamodb table.
+    Type: String
+    Default: 'byWeaponResult'
+  MatchmakingConfiguration:
+    Description: the name of matchmaking configuration.
+    Type: String
+    Default: 'awsTutorial-Matchmaking-Configuration'
+  WeaponRateUpdateInterval:
+    Description: the interval between two weapon rate update.
+    Type: Number
+    Default: 600
+  StartGameSemaphoreNumber:
+    Description: the number of start game calls can be executed at the same time.
+    Type: Number
+    Default: 200
+  PartyBackupTime:
+    Description: how long the party info will be kept before delete so that players can rejoin the party.
+    Type: Number
+    Default: 90
+  SendRequestSizeThreshold:
+    Description: how long the send request queue size should be kept before dropping
+    Type: Number
+    Default: 20
 Resources:
   awsTutorialWebSocketMMOEC2VPC:
     Type: AWS::EC2::VPC
@@ -161,7 +236,26 @@ Resources:
               "position_update_interval": ${PositionUpdateInterval},
               "region": "${AWS::Region}",
               "user_pool_id": "${CognitoUserPool}",
-              "app_client_id": "${CognitoUserPoolClient}"
+              "app_client_id": "${CognitoUserPoolClient}",
+              "min_send_invitation_rate": ${MinSendInvitationRate},
+              "invitation_expire": ${InvitationExpire},
+              "party_maximum_room_number": ${PartyMaximumRoomNumber},
+              "private_party_maximum_room_number": ${PrivatePartyMaximumRoomNumber},
+              "room_manager_shard_number": ${RoomManagerShardNumber},
+              "party_manager_shard_number": ${PartyManagerShardNumber},
+              "private_party_passcode_refill_threshold": ${PrivatePartyPasscodeRefillThreshold},
+              "private_party_passcode_refill_size": ${PrivatePartyPasscodeRefillSize},
+              "private_party_passcode_length": ${PrivatePartyPasscodeLength},
+              "game_session_maximum_player_session_count": ${GameSessionMaximumPlayerSessionCount},
+              "game_session_queue_name": ${GameSessionQueueName},
+              "game_session_placement_query_interval": ${GameSessionPlacementQueryInterval},
+              "team_assignment_table_name": ${TeamAssignmentTableName},
+              "weapon_index": ${WeaponIndex},
+              "matchmaking_configuration": ${MatchmakingConfiguration},
+              "weapon_rate_update_interval": ${WeaponRateUpdateInterval},
+              "start_game_semaphore_number": ${StartGameSemaphoreNumber},
+              "party_backup_time": ${PartyBackupTime},
+              "send_requests_size_threshold": ${SendRequestSizeThreshold}
             }
         TagSpecifications:
           - ResourceType: instance

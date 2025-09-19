@@ -911,9 +911,7 @@ Resources:
           InsertMatch(gameSessionId: String!, team: [Team]!): Boolean @aws_iam
           UpdateMatchResult(gameSessionId: String!, winner: String!): Boolean @aws_iam
           StartMatchmaking(weapon: String!, latency: [Latency]!): StartMatchmakingResult @aws_cognito_user_pools
-          StartMatchmakingServer(players: [StartMatchmakingPlayer]!): StartMatchmakingResult @aws_iam
           StopMatchmaking(ticketId: String!): Boolean @aws_cognito_user_pools
-          StopMatchmakingServer(ticketId: String!): Boolean @aws_iam
         }
         type Subscription @aws_cognito_user_pools {
         }
@@ -1097,28 +1095,28 @@ Resources:
           $utils.toJson($ctx.result)
         #end
       TypeName: Mutation
-  awsTutorialMatchmakingGraphQLMutationStartMatchmakingServerResolver:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
-      DataSourceName: !GetAtt awsTutorialStartMatchmakingDataSource.Name
-      FieldName: StartMatchmakingServer
-      Kind: UNIT
-      RequestMappingTemplate: |
-        {
-          "version": "2017-02-28",
-          "operation": "Invoke",
-          "payload": {
-            "players": $utils.toJson($ctx.args.players)
-          }
-        }
-      ResponseMappingTemplate: |
-        #if($ctx.error)
-          $util.error($ctx.error.message, $ctx.error.type)
-        #else
-          $utils.toJson($ctx.result)
-        #end
-      TypeName: Mutation
+#  awsTutorialMatchmakingGraphQLMutationStartMatchmakingServerResolver:
+#    Type: AWS::AppSync::Resolver
+#    Properties:
+#      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+#      DataSourceName: !GetAtt awsTutorialStartMatchmakingDataSource.Name
+#      FieldName: StartMatchmakingServer
+#      Kind: UNIT
+#      RequestMappingTemplate: |
+#        {
+#          "version": "2017-02-28",
+#          "operation": "Invoke",
+#          "payload": {
+#            "players": $utils.toJson($ctx.args.players)
+#          }
+#        }
+#      ResponseMappingTemplate: |
+#        #if($ctx.error)
+#          $util.error($ctx.error.message, $ctx.error.type)
+#        #else
+#          $utils.toJson($ctx.result)
+#        #end
+#      TypeName: Mutation
   awsTutorialMatchmakingGraphQLQueryDescribeMatchmakingResolver:
     Type: AWS::AppSync::Resolver
     Properties:
@@ -1261,30 +1259,30 @@ Resources:
           true
         #end
       TypeName: Mutation
-  awsTutorialMatchmakingGraphQLMutationStopMatchmakingServerResolver:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
-      DataSourceName: !GetAtt awsTutorialStopMatchmakingDataSource.Name
-      FieldName: StopMatchmakingServer
-      Kind: UNIT
-      RequestMappingTemplate: |
-        {
-          "version": "2017-02-28",
-          "operation": "Invoke",
-          "payload": {
-            "ticket": $utils.toJson($ctx.args.ticketId)
-          }
-        }
-      ResponseMappingTemplate: |
-        #if($ctx.error)
-          $util.error($ctx.error.message, $ctx.error.type)
-          false
-        #else
-          $utils.toJson($ctx.result)
-          true
-        #end
-      TypeName: Mutation
+#  awsTutorialMatchmakingGraphQLMutationStopMatchmakingServerResolver:
+#    Type: AWS::AppSync::Resolver
+#    Properties:
+#      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
+#      DataSourceName: !GetAtt awsTutorialStopMatchmakingDataSource.Name
+#      FieldName: StopMatchmakingServer
+#      Kind: UNIT
+#      RequestMappingTemplate: |
+#        {
+#          "version": "2017-02-28",
+#          "operation": "Invoke",
+#          "payload": {
+#            "ticket": $utils.toJson($ctx.args.ticketId)
+#          }
+#        }
+#      ResponseMappingTemplate: |
+#        #if($ctx.error)
+#          $util.error($ctx.error.message, $ctx.error.type)
+#          false
+#        #else
+#          $utils.toJson($ctx.result)
+#          true
+#        #end
+#      TypeName: Mutation
 Outputs:
   awsTutorialMatchmakingGraphQLHost:
     Description: GraphQL Host

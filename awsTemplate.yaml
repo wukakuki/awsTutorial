@@ -168,60 +168,60 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
-  awsTutorialPrivateGameWithWSMMOStack:
-    Type: AWS::CloudFormation::Stack
-    Condition: ShouldDeployPrivateGameWithWSMMO
-    DependsOn:
-      - awsTutorialGameLiftStack
-      - awsTutorialWebSocketMMOStack
-      - awsTutorialMatchmakingWithWSMMOStack
-    Properties:
-      TemplateURL: !Ref PrivateGamePartTemplateUrl
-      Parameters:
-        ResourceNamePrefix: !Ref ResourceNamePrefix
-        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
-        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
-        GameLiftFleetId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetId
-        GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
-        GameLiftRegularGameSessionMaxPlayerNum: !Ref GameLiftRegularGameSessionMaxPlayerNum
-        GameLiftPrivateGameSessionMaxPlayerNum: !Ref GameLiftPrivateGameSessionMaxPlayerNum
-        GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
-        WSMMOHost: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName
-        GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
-        GameLiftFleetInstanceRoleArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleArn
-        MatchmakingGraphQLRegion: !Ref AWS::Region
-        MatchmakingGraphQLEndpoint: !GetAtt awsTutorialMatchmakingWithWSMMOStack.Outputs.awsTutorialMatchmakingGraphQLEndpoint
-        MatchmakingGraphQLHost: !GetAtt awsTutorialMatchmakingWithWSMMOStack.Outputs.awsTutorialMatchmakingGraphQLHost
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
-  awsTutorialPrivateGameWithoutWSMMOStack:
-    Type: AWS::CloudFormation::Stack
-    Condition: ShouldDeployPrivateGameWithoutWSMMO
-    DependsOn:
-      - awsTutorialGameLiftStack
-      - awsTutorialMatchmakingWithoutWSMMOStack
-    Properties:
-      TemplateURL: !Ref PrivateGamePartTemplateUrl
-      Parameters:
-        ResourceNamePrefix: !Ref ResourceNamePrefix
-        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
-        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
-        GameLiftFleetId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetId
-        GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
-        GameLiftRegularGameSessionMaxPlayerNum: !Ref GameLiftRegularGameSessionMaxPlayerNum
-        GameLiftPrivateGameSessionMaxPlayerNum: !Ref GameLiftPrivateGameSessionMaxPlayerNum
-        GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
-        GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
-        GameLiftFleetInstanceRoleArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleArn
-        MatchmakingGraphQLRegion: !Ref AWS::Region
-        MatchmakingGraphQLEndpoint: !GetAtt awsTutorialMatchmakingWithoutWSMMOStack.Outputs.awsTutorialMatchmakingGraphQLEndpoint
-        MatchmakingGraphQLHost: !GetAtt awsTutorialMatchmakingWithoutWSMMOStack.Outputs.awsTutorialMatchmakingGraphQLHost
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
+#  awsTutorialPrivateGameWithWSMMOStack:
+#    Type: AWS::CloudFormation::Stack
+#    Condition: ShouldDeployPrivateGameWithWSMMO
+#    DependsOn:
+#      - awsTutorialGameLiftStack
+#      - awsTutorialWebSocketMMOStack
+#      - awsTutorialMatchmakingWithWSMMOStack
+#    Properties:
+#      TemplateURL: !Ref PrivateGamePartTemplateUrl
+#      Parameters:
+#        ResourceNamePrefix: !Ref ResourceNamePrefix
+#        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+#        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+#        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+#        GameLiftFleetId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetId
+#        GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
+#        GameLiftRegularGameSessionMaxPlayerNum: !Ref GameLiftRegularGameSessionMaxPlayerNum
+#        GameLiftPrivateGameSessionMaxPlayerNum: !Ref GameLiftPrivateGameSessionMaxPlayerNum
+#        GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
+#        WSMMOHost: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName
+#        GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
+#        GameLiftFleetInstanceRoleArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleArn
+#        MatchmakingGraphQLRegion: !Ref AWS::Region
+#        MatchmakingGraphQLEndpoint: !GetAtt awsTutorialMatchmakingWithWSMMOStack.Outputs.awsTutorialMatchmakingGraphQLEndpoint
+#        MatchmakingGraphQLHost: !GetAtt awsTutorialMatchmakingWithWSMMOStack.Outputs.awsTutorialMatchmakingGraphQLHost
+#      Tags:
+#        - Key: Usage
+#          Value: Youtube Streamer
+#  awsTutorialPrivateGameWithoutWSMMOStack:
+#    Type: AWS::CloudFormation::Stack
+#    Condition: ShouldDeployPrivateGameWithoutWSMMO
+#    DependsOn:
+#      - awsTutorialGameLiftStack
+#      - awsTutorialMatchmakingWithoutWSMMOStack
+#    Properties:
+#      TemplateURL: !Ref PrivateGamePartTemplateUrl
+#      Parameters:
+#        ResourceNamePrefix: !Ref ResourceNamePrefix
+#        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+#        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+#        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+#        GameLiftFleetId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetId
+#        GameLiftAliasId: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
+#        GameLiftRegularGameSessionMaxPlayerNum: !Ref GameLiftRegularGameSessionMaxPlayerNum
+#        GameLiftPrivateGameSessionMaxPlayerNum: !Ref GameLiftPrivateGameSessionMaxPlayerNum
+#        GameLiftGameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
+#        GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
+#        GameLiftFleetInstanceRoleArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleArn
+#        MatchmakingGraphQLRegion: !Ref AWS::Region
+#        MatchmakingGraphQLEndpoint: !GetAtt awsTutorialMatchmakingWithoutWSMMOStack.Outputs.awsTutorialMatchmakingGraphQLEndpoint
+#        MatchmakingGraphQLHost: !GetAtt awsTutorialMatchmakingWithoutWSMMOStack.Outputs.awsTutorialMatchmakingGraphQLHost
+#      Tags:
+#        - Key: Usage
+#          Value: Youtube Streamer
   awsTutorialFriendSystemStack:
     Type: AWS::CloudFormation::Stack
     DependsOn: awsTutorialUGCStack
@@ -235,19 +235,19 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
-  awsTutorialInvitationSystemStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn: awsTutorialUGCStack
-    Properties:
-      TemplateURL: !Ref InvitationSystemPartTemplateUrl
-      Parameters:
-        ResourceNamePrefix: !Ref ResourceNamePrefix
-        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
-        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
+#  awsTutorialInvitationSystemStack:
+#    Type: AWS::CloudFormation::Stack
+#    DependsOn: awsTutorialUGCStack
+#    Properties:
+#      TemplateURL: !Ref InvitationSystemPartTemplateUrl
+#      Parameters:
+#        ResourceNamePrefix: !Ref ResourceNamePrefix
+#        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+#        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+#        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+#      Tags:
+#        - Key: Usage
+#          Value: Youtube Streamer
   awsTutorialWebSocketMMOStack:
     Type: AWS::CloudFormation::Stack
     Condition: ShouldDeployWebSocketMMO
@@ -302,33 +302,33 @@ Outputs:
   awsTutorialFriendSystemGraphQLRealtimeEndpoint:
     Description: Friend System GraphQL realtime Endpoint
     Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLRealtimeEndpoint
-  awsTutorialInvitationSystemGraphQLHost:
-    Description: Invitation System GraphQL Host
-    Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLHost
-  awsTutorialInvitationSystemGraphQLEndpoint:
-    Description: Invitation System GraphQL Endpoint
-    Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLEndpoint
-  awsTutorialInvitationSystemGraphQLRealtimeEndpoint:
-    Description: Invitation System GraphQL realtime Endpoint
-    Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLRealtimeEndpoint
+#  awsTutorialInvitationSystemGraphQLHost:
+#    Description: Invitation System GraphQL Host
+#    Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLHost
+#  awsTutorialInvitationSystemGraphQLEndpoint:
+#    Description: Invitation System GraphQL Endpoint
+#    Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLEndpoint
+#  awsTutorialInvitationSystemGraphQLRealtimeEndpoint:
+#    Description: Invitation System GraphQL realtime Endpoint
+#    Value: !GetAtt awsTutorialInvitationSystemStack.Outputs.awsTutorialInvitationSystemGraphQLRealtimeEndpoint
   awsTutorialWebSocketMMODNSName:
     Condition: ShouldDeployWebSocketMMO
     Description: The DNSName of the WebSocket MMO Server
     Value: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName
-  awsTutorialPrivateGameGraphQLHost:
-    Condition: ShouldDeployGameServer
-    Description: Private Game GraphQL Host
-    Value: !If
-      - ShouldDeployWebSocketMMO
-      - !GetAtt awsTutorialPrivateGameWithWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLHost
-      - !GetAtt awsTutorialPrivateGameWithoutWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLHost
-  awsTutorialPrivateGameGraphQLEndpoint:
-    Condition: ShouldDeployGameServer
-    Description: Private Game GraphQL Endpoint
-    Value: !If
-      - ShouldDeployWebSocketMMO
-      - !GetAtt awsTutorialPrivateGameWithWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLEndpoint
-      - !GetAtt awsTutorialPrivateGameWithoutWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLEndpoint
+#  awsTutorialPrivateGameGraphQLHost:
+#    Condition: ShouldDeployGameServer
+#    Description: Private Game GraphQL Host
+#    Value: !If
+#      - ShouldDeployWebSocketMMO
+#      - !GetAtt awsTutorialPrivateGameWithWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLHost
+#      - !GetAtt awsTutorialPrivateGameWithoutWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLHost
+#  awsTutorialPrivateGameGraphQLEndpoint:
+#    Condition: ShouldDeployGameServer
+#    Description: Private Game GraphQL Endpoint
+#    Value: !If
+#      - ShouldDeployWebSocketMMO
+#      - !GetAtt awsTutorialPrivateGameWithWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLEndpoint
+#      - !GetAtt awsTutorialPrivateGameWithoutWSMMOStack.Outputs.awsTutorialPrivateGameGraphQLEndpoint
   awsTutorialMatchmakingGraphQLHost:
     Condition: ShouldDeployGameServer
     Description: Matchmaking GraphQL Host
