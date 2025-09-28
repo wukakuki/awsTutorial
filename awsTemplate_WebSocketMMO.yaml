@@ -82,12 +82,8 @@ Parameters:
     Description: how many clients can join a private party at the same time.
     Type: Number
     Default: 16
-  RoomManagerShardNumber:
-    Description: the number of room manager shard. (should be equal to the number of vcpu to get best performance)
-    Type: Number
-    Default: 16
-  PartyManagerShardNumber:
-    Description: the number of party manager shard. (should be equal to the number of vcpu to get best performance)
+  ManagerShardNumber:
+    Description: the number of room and party manager shard. (should be equal to the number of vcpu to get best performance)
     Type: Number
     Default: 16
   PrivatePartyPasscodeRefillThreshold:
@@ -141,6 +137,10 @@ Parameters:
     Description: how long the send request queue size should be kept before dropping
     Type: Number
     Default: 20
+  DefaultWeaponId:
+    Description: how long the send request queue size should be kept before dropping
+    Type: String
+    Default: 'dbc067bd-1cb0-4545-beee-eb070d9cf23f'
 Resources:
   awsTutorialWebSocketMMOEC2VPC:
     Type: AWS::EC2::VPC
@@ -241,8 +241,7 @@ Resources:
               "invitation_expire": ${InvitationExpire},
               "party_maximum_room_number": ${PartyMaximumRoomNumber},
               "private_party_maximum_room_number": ${PrivatePartyMaximumRoomNumber},
-              "room_manager_shard_number": ${RoomManagerShardNumber},
-              "party_manager_shard_number": ${PartyManagerShardNumber},
+              "manager_shard_number": ${ManagerShardNumber},
               "private_party_passcode_refill_threshold": ${PrivatePartyPasscodeRefillThreshold},
               "private_party_passcode_refill_size": ${PrivatePartyPasscodeRefillSize},
               "private_party_passcode_length": ${PrivatePartyPasscodeLength},
@@ -254,8 +253,11 @@ Resources:
               "matchmaking_configuration": ${MatchmakingConfiguration},
               "weapon_rate_update_interval": ${WeaponRateUpdateInterval},
               "start_game_semaphore_number": ${StartGameSemaphoreNumber},
+              "start_game_matchmaking_gate_range_min": ${StartGameMatchmakingGateRangeMin},
+              "start_game_matchmaking_gate_range_max": ${StartGameMatchmakingGateRangeMax},
               "party_backup_time": ${PartyBackupTime},
-              "send_requests_size_threshold": ${SendRequestSizeThreshold}
+              "send_requests_size_threshold": ${SendRequestSizeThreshold},
+              "default_weapon_id": ${DefaultWeaponId}
             }
         TagSpecifications:
           - ResourceType: instance
