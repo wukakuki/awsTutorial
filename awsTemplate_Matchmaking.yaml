@@ -21,14 +21,14 @@ Parameters:
   GameLiftGameSessionQueueArn:
     Description: GameLift GameSession Queue Arn of the GameLift GameSession Queue which is ued to start matchmaking
     Type: String
-  WSMMOHost:
-    Description: host of websocket based MMO system
-    Type: String
-    Default: ""
   GameLiftFleetInstanceRoleName:
     Description: role name of gamelift fleet instance role
     Type: String
     Default: ""
+  WeaponIndex:
+    Description: the index name of weapon result index in dynamodb table.
+    Type: String
+    Default: 'byWeaponResult'
 Resources:
   awsTutorialMatchmakingRuleSet:
     Type: AWS::GameLift::MatchmakingRuleSet
@@ -125,8 +125,6 @@ Resources:
       GameProperties:
         - Key: "GameType"
           Value: "Match"
-        - Key: "WSMMOHost"
-          Value: !Ref WSMMOHost
       GameSessionQueueArns:
         - !Ref GameLiftGameSessionQueueArn
 #     use 90 when release
@@ -185,7 +183,7 @@ Resources:
             MaxReadRequestUnits: 1
             MaxWriteRequestUnits: 1
       LocalSecondaryIndexes:
-        - IndexName: byWeaponResult
+        - IndexName: !Ref WeaponIndex
           KeySchema:
             - AttributeName: PlayerName_Weapon
               KeyType: HASH
@@ -310,7 +308,7 @@ Resources:
       Environment:
         Variables:
           TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
-          Weapon_Index: byWeaponResult
+          Weapon_Index: !Ref WeaponIndex
           Game_Index: byGame
       Handler: index.lambda_handler
       # LoggingConfig:
@@ -413,7 +411,7 @@ Resources:
       Environment:
         Variables:
           TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
-          Weapon_Index: byWeaponResult
+          Weapon_Index: !Ref WeaponIndex
           Game_Index: byGame
       Handler: index.lambda_handler
       # LoggingConfig:
@@ -494,8 +492,7 @@ Resources:
                       'N': rate
                     },
                     'playerData': {
-                      'S': json.dumps({'id': player['weapon']})
-                      
+                      'S': json.dumps({'weapon_id': player['weapon']})
                     }
                   },
                   'LatencyInMs': {
@@ -520,7 +517,7 @@ Resources:
       Environment:
         Variables:
           TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
-          Weapon_Index: byWeaponResult
+          Weapon_Index: !Ref WeaponIndex
           Game_Index: byGame
           MATCHMAKING_CONFIGURATION: !Ref awsTutorialMatchmakingConfiguration
       Handler: index.lambda_handler
@@ -585,7 +582,7 @@ Resources:
       Environment:
         Variables:
           TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
-          Weapon_Index: byWeaponResult
+          Weapon_Index: !Ref WeaponIndex
           Game_Index: byGame
           MATCHMAKING_CONFIGURATION: !Ref awsTutorialMatchmakingConfiguration
       Handler: index.lambda_handler
@@ -648,7 +645,7 @@ Resources:
       Environment:
         Variables:
           TEAM_ASSIGNMENT_TABLE_NAME: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
-          Weapon_Index: byWeaponResult
+          Weapon_Index: !Ref WeaponIndex
           Game_Index: byGame
           MATCHMAKING_CONFIGURATION: !Ref awsTutorialMatchmakingConfiguration
       Handler: index.lambda_handler
@@ -905,7 +902,6 @@ Resources:
         type Query @aws_cognito_user_pools {
           GetWeaponRate(weapon: String!): Int @aws_cognito_user_pools
           DescribeMatchmaking(ticketId: String!): DescribeMatchmakingResult @aws_cognito_user_pools
-          DescribeMatchmakingServer(ticketId: String!): DescribeMatchmakingResult @aws_iam
         }
         type Mutation {
           InsertMatch(gameSessionId: String!, team: [Team]!): Boolean @aws_iam
@@ -922,7 +918,7 @@ Resources:
       DataSourceName: !GetAtt awsTutorialGetWeaponRateDataSource.Name
       FieldName: GetWeaponRate
       Kind: UNIT
-      RequestMappingTemplate: |
+      RequestMappingTemplate: !Sub |
         ## [Start] Set default values. **
         #set( $createdAt = $util.time.nowEpochSeconds() )
         #set( $updatedAt = $util.time.nowEpochSeconds() )
@@ -962,7 +958,7 @@ Resources:
         {
           "version": "2017-02-28",
           "operation": "Query",
-          "index": "byWeaponResult",
+          "index": "${WeaponIndex}",
           "query": {
             "expression": "PlayerName_Weapon = :PlayerName_Weapon and UpdateTime > :UpdateTime",
             "expressionValues": {
@@ -1095,28 +1091,6 @@ Resources:
           $utils.toJson($ctx.result)
         #end
       TypeName: Mutation
-#  awsTutorialMatchmakingGraphQLMutationStartMatchmakingServerResolver:
-#    Type: AWS::AppSync::Resolver
-#    Properties:
-#      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
-#      DataSourceName: !GetAtt awsTutorialStartMatchmakingDataSource.Name
-#      FieldName: StartMatchmakingServer
-#      Kind: UNIT
-#      RequestMappingTemplate: |
-#        {
-#          "version": "2017-02-28",
-#          "operation": "Invoke",
-#          "payload": {
-#            "players": $utils.toJson($ctx.args.players)
-#          }
-#        }
-#      ResponseMappingTemplate: |
-#        #if($ctx.error)
-#          $util.error($ctx.error.message, $ctx.error.type)
-#        #else
-#          $utils.toJson($ctx.result)
-#        #end
-#      TypeName: Mutation
   awsTutorialMatchmakingGraphQLQueryDescribeMatchmakingResolver:
     Type: AWS::AppSync::Resolver
     Properties:
@@ -1166,28 +1140,6 @@ Resources:
           "operation": "Invoke",
           "payload": {
             "username": $utils.toJson($identityValue),
-            "ticket": $utils.toJson($ctx.args.ticketId)
-          }
-        }
-      ResponseMappingTemplate: |
-        #if($ctx.error)
-          $util.error($ctx.error.message, $ctx.error.type)
-        #else
-          $utils.toJson($ctx.result)
-        #end
-      TypeName: Query
-  awsTutorialMatchmakingGraphQLQueryDescribeMatchmakingServerResolver:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
-      DataSourceName: !GetAtt awsTutorialDescribeMatchmakingDataSource.Name
-      FieldName: DescribeMatchmakingServer
-      Kind: UNIT
-      RequestMappingTemplate: |
-        {
-          "version": "2017-02-28",
-          "operation": "Invoke",
-          "payload": {
             "ticket": $utils.toJson($ctx.args.ticketId)
           }
         }
@@ -1259,30 +1211,6 @@ Resources:
           true
         #end
       TypeName: Mutation
-#  awsTutorialMatchmakingGraphQLMutationStopMatchmakingServerResolver:
-#    Type: AWS::AppSync::Resolver
-#    Properties:
-#      ApiId: !GetAtt awsTutorialMatchmakingGraphQLApi.ApiId
-#      DataSourceName: !GetAtt awsTutorialStopMatchmakingDataSource.Name
-#      FieldName: StopMatchmakingServer
-#      Kind: UNIT
-#      RequestMappingTemplate: |
-#        {
-#          "version": "2017-02-28",
-#          "operation": "Invoke",
-#          "payload": {
-#            "ticket": $utils.toJson($ctx.args.ticketId)
-#          }
-#        }
-#      ResponseMappingTemplate: |
-#        #if($ctx.error)
-#          $util.error($ctx.error.message, $ctx.error.type)
-#          false
-#        #else
-#          $utils.toJson($ctx.result)
-#          true
-#        #end
-#      TypeName: Mutation
 Outputs:
   awsTutorialMatchmakingGraphQLHost:
     Description: GraphQL Host
@@ -1294,3 +1222,18 @@ Outputs:
     Value: !GetAtt awsTutorialMatchmakingGraphQLApi.GraphQLUrl
     Export:
       Name: !Sub 'awsTutorialMatchmakingGraphQLEndpoint'
+  awsTutorialMatchmakingMatchTeamAssignmentTableName:
+    Description: Team AssignMent Table Name
+    Value: !Ref awsTutorialMatchmakingMatchTeamAssignmentTable
+    Export:
+      Name: !Sub 'awsTutorialMatchmakingMatchTeamAssignmentTableName'
+  awsTutorialMatchmakingMatchTeamAssignmentTableArn:
+    Description: Team AssignMent Table Arn
+    Value: !GetAtt awsTutorialMatchmakingMatchTeamAssignmentTable.Arn
+    Export:
+      Name: !Sub 'awsTutorialMatchmakingMatchTeamAssignmentTableArn'
+  awsTutorialMatchmakingConfiguration:
+    Description: matchmaking configuration
+    Value: !Ref awsTutorialMatchmakingConfiguration
+    Export:
+      Name: !Sub 'awsTutorialMatchmakingConfiguration'

@@ -10,7 +10,7 @@ Mappings:
     ap-northeast-1:
       AMI: ami-0789e48e7c38156d0
     ap-northeast-2:
-      AMI: ami-0a58cb3745bc84873
+      AMI: ami-08fad0934471247d9
     ap-northeast-3:
       AMI: ami-09e9c946f496a61f0
     ap-southeast-1:
@@ -45,6 +45,9 @@ Parameters:
   ResourceNamePrefix:
     Description: Prefix of resource name
     Default: awstutorial
+    Type: String
+  GameLiftGameSessionQueueArn:
+    Description: GameLift GameSession Queue Arn of the GameLift GameSession Queue which is ued to start matchmaking
     Type: String
   WebSocketMMOEC2InstanceType:
     Description: ec2 instance type of the web socket mmo server
@@ -113,6 +116,9 @@ Parameters:
     Description: the name of team assignment table.
     Type: String
     Default: 'awsTutorial_Matchmaking_MatchTeamAssignment_DynamoDB_Table'
+  TeamAssignmentTableArn:
+    Description: the arn of team assignment table.
+    Type: String
   WeaponIndex:
     Description: the index name of weapon result index in dynamodb table.
     Type: String
@@ -129,6 +135,14 @@ Parameters:
     Description: the number of start game calls can be executed at the same time.
     Type: Number
     Default: 200
+  StartGameMatchmakingGateRangeMin:
+    Description: the minimal number of start matchmaking calls should be there before sending the actual call
+    Type: Number
+    Default: 1
+  StartGameMatchmakingGateRangeMax:
+    Description: the number of start game calls can be executed at the same time. (-1 means unlimited)
+    Type: Number
+    Default: -1
   PartyBackupTime:
     Description: how long the party info will be kept before delete so that players can rejoin the party.
     Type: Number
@@ -211,6 +225,76 @@ Resources:
       FromPort: 8000
       ToPort: 8000
       SourceSecurityGroupId: !Ref awsTutorialWebSocketMMOELBSecurityGroup
+  awsTutorialWebSocketMMORole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _WebSocket_MMO_IAM_Role
+      Description: Role for ws mmo to access dynamodb table and gamelift
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - _GetWeaponRate_Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: GetWeaponRatePolicy
+                Effect: Allow
+                Action:
+                  - dynamodb:PartiQLSelect
+                Resource:
+                  - !Ref TeamAssignmentTableArn
+                  - !Join
+                    - ''
+                    - - !Ref TeamAssignmentTableArn
+                      - '/index/'
+                      - !Ref WeaponIndex
+              - Sid: GameLiftMatchmakingPolicy
+                Effect: Allow
+                Action:
+                  - gamelift:StopMatchmaking
+                  - gamelift:DescribeMatchmaking
+                  - gamelift:StartMatchmaking
+                Resource:
+                  - '*'
+              - Sid: GameLiftQueuePolicy
+                Effect: Allow
+                Action:
+                  - gamelift:StopGameSessionPlacement
+                  - gamelift:DescribeGameSessionPlacement
+                Resource:
+                  - '*'
+              - Sid: GameLiftQueuePolicy2
+                Effect: Allow
+                Action:
+                  - gamelift:StartGameSessionPlacement
+                Resource:
+                  - !Ref GameLiftGameSessionQueueArn
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialWebSocketMMOIAMInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _WebSocket_MMO_IAM_InstanceProfile
+      Path: '/'
+      Roles:
+        - !Ref awsTutorialWebSocketMMORole
   awsTutorialWebSocketMMOEC2LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -225,6 +309,8 @@ Resources:
             InstanceInterruptionBehavior: stop
             SpotInstanceType: persistent
         InstanceType: !Ref WebSocketMMOEC2InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt awsTutorialWebSocketMMOIAMInstanceProfile.Arn
         ImageId: !FindInMap
           - AMIRegionMappings
           - !Ref AWS::Region
