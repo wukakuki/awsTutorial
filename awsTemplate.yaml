@@ -95,7 +95,7 @@ Parameters:
     Type: Number
     Default: 20
   DefaultWeaponId:
-    Description: how long the send request queue size should be kept before dropping
+    Description: the default weapon id
     Type: String
     Default: 'dbc067bd-1cb0-4545-beee-eb070d9cf23f'
   WebSocketMMOEC2InstanceType:
@@ -124,7 +124,7 @@ Parameters:
   GameServerBuildObjectVersion:
     Description: The version of the game server build file.
     Type: String
-    Default: qk_FqekL4TkAeYuYMGrSRc_z6C7J76DV
+    Default: VcQ6SOBlruNTiZM2AUqry3KfmK0Q1MdZ
   GameServerBuildServerSdkVersion:
     Description: The server sdk version of the game server build file.
     Type: String

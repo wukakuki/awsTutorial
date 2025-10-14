@@ -10,7 +10,7 @@ Mappings:
     ap-northeast-1:
       AMI: ami-0789e48e7c38156d0
     ap-northeast-2:
-      AMI: ami-08fad0934471247d9
+      AMI: ami-06e6f6e4d3315507b
     ap-northeast-3:
       AMI: ami-09e9c946f496a61f0
     ap-southeast-1:
@@ -68,7 +68,7 @@ Parameters:
   PositionUpdateInterval:
     Description: Seconds between two position update. (Set to 0 to make realtime MMO system)
     Type: Number
-    Default: 5
+    Default: 2
   MinSendInvitationRate:
     Description: Seconds between two invitation send. (Set to 0 to make it unlimited)
     Type: Number
@@ -152,7 +152,7 @@ Parameters:
     Type: Number
     Default: 20
   DefaultWeaponId:
-    Description: how long the send request queue size should be kept before dropping
+    Description: the default weapon id
     Type: String
     Default: 'dbc067bd-1cb0-4545-beee-eb070d9cf23f'
 Resources:
@@ -315,6 +315,34 @@ Resources:
           - AMIRegionMappings
           - !Ref AWS::Region
           - AMI
+#        {
+#          "jwks_update_interval": 3600,
+#          "position_update_interval": 5,
+#          "region": "ap-northeast-2",
+#          "user_pool_id": "ap-northeast-2_sFGUdVUA0",
+#          "app_client_id": "53jlnqcef0oc7lf8pmd2ov4fve",
+#          "min_send_invitation_rate": 1,
+#          "invitation_expire": 15,
+#          "party_maximum_room_number": 4,
+#          "private_party_maximum_room_number": 16,
+#          "manager_shard_number": 4,
+#          "private_party_passcode_refill_threshold": 16,
+#          "private_party_passcode_refill_size": 5000,
+#          "private_party_passcode_length": 6,
+#          "game_session_maximum_player_session_count": 8,
+#          "game_session_queue_name": "",
+#          "game_session_placement_query_interval": 5,
+#          "team_assignment_table_name": "",
+#          "weapon_index": "",
+#          "matchmaking_configuration": "",
+#          "weapon_rate_update_interval": 600,
+#          "start_game_semaphore_number": 200,
+#          "start_game_matchmaking_gate_range_min": 1,
+#          "start_game_matchmaking_gate_range_max": -1,
+#          "party_backup_time": 90,
+#          "send_requests_size_threshold": 20,
+#          "default_weapon_id": "dbc067bd-1cb0-4545-beee-eb070d9cf23f"
+#        }
         UserData: !Base64
           Fn::Sub: |
             {
@@ -332,18 +360,18 @@ Resources:
               "private_party_passcode_refill_size": ${PrivatePartyPasscodeRefillSize},
               "private_party_passcode_length": ${PrivatePartyPasscodeLength},
               "game_session_maximum_player_session_count": ${GameSessionMaximumPlayerSessionCount},
-              "game_session_queue_name": ${GameSessionQueueName},
+              "game_session_queue_name": "${GameSessionQueueName}",
               "game_session_placement_query_interval": ${GameSessionPlacementQueryInterval},
-              "team_assignment_table_name": ${TeamAssignmentTableName},
-              "weapon_index": ${WeaponIndex},
-              "matchmaking_configuration": ${MatchmakingConfiguration},
+              "team_assignment_table_name": "${TeamAssignmentTableName}",
+              "weapon_index": "${WeaponIndex}",
+              "matchmaking_configuration": "${MatchmakingConfiguration}",
               "weapon_rate_update_interval": ${WeaponRateUpdateInterval},
               "start_game_semaphore_number": ${StartGameSemaphoreNumber},
               "start_game_matchmaking_gate_range_min": ${StartGameMatchmakingGateRangeMin},
               "start_game_matchmaking_gate_range_max": ${StartGameMatchmakingGateRangeMax},
               "party_backup_time": ${PartyBackupTime},
               "send_requests_size_threshold": ${SendRequestSizeThreshold},
-              "default_weapon_id": ${DefaultWeaponId}
+              "default_weapon_id": "${DefaultWeaponId}"
             }
         TagSpecifications:
           - ResourceType: instance

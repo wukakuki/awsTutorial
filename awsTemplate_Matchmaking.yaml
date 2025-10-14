@@ -962,7 +962,7 @@ Resources:
           "query": {
             "expression": "PlayerName_Weapon = :PlayerName_Weapon and UpdateTime > :UpdateTime",
             "expressionValues": {
-              ":PlayerName_Weapon": $util.dynamodb.toDynamoDBJson("${identityValue} ${ctx.args.weapon}"),
+              ":PlayerName_Weapon": $util.dynamodb.toDynamoDBJson("${!identityValue} ${!ctx.args.weapon}"),
               ":UpdateTime": $util.dynamodb.toDynamoDBJson($updatedAt - 90 * 24 * 60 * 60)
             }
           },
