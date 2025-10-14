@@ -10,7 +10,7 @@ public class awsTutorialServerTarget : TargetRules
 		Type = TargetType.Server;
 		bValidateFormatStrings = true;
 		DefaultBuildSettings = BuildSettingsVersion.V5;
-		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_4;
+		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_6;
 		ExtraModuleNames.Add("awsTutorial");
 	}
 }
