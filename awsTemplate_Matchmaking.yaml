@@ -60,6 +60,13 @@ Resources:
             "sortDirection": "ascending",
             "sortAttribute": "rate"
           }, {
+            "name": "CloseTeamSizes",
+            "description": "Only launch a game when the team sizes are within 0 of each other.  e.g. 1 vs 1, 2 vs 2",
+            "type": "distance",
+            "measurements": [ "max(count(teams[*].players))"],
+            "referenceValue": "min(count(teams[*].players))",
+            "maxDistance": 0
+          }, {
             "name": "fast_connection",
             "description": "Prefer matches with fast player connections first",
             "type": "latency",
@@ -81,7 +88,7 @@ Resources:
               "value": 9999
             }]
           }, {
-            "target": "teams[team].maxPlayers",
+            "target": "teams[team].minPlayers",
             "steps": [{
               "waitTimeSeconds": 2,
               "value": 3
@@ -93,15 +100,9 @@ Resources:
               "value": 1
             }]
           }, {
-            "target": "teams[team].minPlayers",
+            "target": "rules[CloseTeamSizes].maxDistance",
             "steps": [{
-              "waitTimeSeconds": 2,
-              "value": 3
-            }, {
-              "waitTimeSeconds": 4,
-              "value": 2
-            }, {
-              "waitTimeSeconds": 6,
+              "waitTimeSeconds": 3,
               "value": 1
             }]
           }]

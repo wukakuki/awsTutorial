@@ -4,48 +4,55 @@ Description: awsTutorial(WebSocket MMO part)
 Mappings:
   AMIRegionMappings:
     ap-east-1:
-      AMI: ami-0cd0f879365162d2b
+      AMI: ami-09a0de2c28042c141
     ap-south-1:
-      AMI: ami-048ef064d1acc313a
+      AMI: ami-0bcb6a9a4dda22346
     ap-northeast-1:
-      AMI: ami-0789e48e7c38156d0
+      AMI: ami-069465f617fd5a3f8
     ap-northeast-2:
-      AMI: ami-06e6f6e4d3315507b
+      AMI: ami-061ece8bd49124a10
     ap-northeast-3:
-      AMI: ami-09e9c946f496a61f0
+      AMI: ami-02885cb2cfc235568
     ap-southeast-1:
-      AMI: ami-097dcb6d05bcae11a
+      AMI: ami-0bb2845ea9bf01ec6
     ap-southeast-2:
-      AMI: ami-0468600aa5e323084
+      AMI: ami-0e3e4eb68b4fdb101
     ca-central-1:
-      AMI: ami-0a9e8701ec5807d7b
+      AMI: ami-01b3031b0ed57ae94
     eu-central-1:
-      AMI: ami-067aace4b839f3f7e
+      AMI: ami-07a37267309fddd30
     eu-west-1:
-      AMI: ami-078e79f1237352442
+      AMI: ami-0a55f3e34828bcbb7
     eu-west-2:
-      AMI: ami-06f48e76720fbb42e
+      AMI: ami-00e278223eb34c848
     eu-west-3:
-      AMI: ami-01a184aaf686b4a44
+      AMI: ami-083b79ec58224eff4
     eu-north-1:
-      AMI: ami-038a66d61ba2ae053
+      AMI: ami-0080cd6023c9e8547
     me-south-1:
-      AMI: ami-077cd03394f530467
+      AMI: ami-07f296394b738110f
     sa-east-1:
-      AMI: ami-00744511e5d14fa97
+      AMI: ami-01a3320632e4bc2e2
     us-east-1:
-      AMI: ami-01d3c6c19c2f7ed1a
+      AMI: ami-0ab5ac7e37f624892
     us-east-2:
-      AMI: ami-05ac2dd6e5d4ebf5e
+      AMI: ami-003b047427e87d5d9
     us-west-1:
-      AMI: ami-02179e65c9cbf65a6
+      AMI: ami-0e4154db6ffc916a7
     us-west-2:
-      AMI: ami-08eeaab1863e7636e
+      AMI: ami-02a2bfe4c15344aff
 Parameters:
   ResourceNamePrefix:
     Description: Prefix of resource name
     Default: awstutorial
     Type: String
+  GameServerDeployed:
+    Description: is gameserver deployed
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
   GameLiftGameSessionQueueArn:
     Description: GameLift GameSession Queue Arn of the GameLift GameSession Queue which is ued to start matchmaking
     Type: String
@@ -69,8 +76,48 @@ Parameters:
     Description: Seconds between two position update. (Set to 0 to make realtime MMO system)
     Type: Number
     Default: 2
+  WeaponUpdateInterval:
+    Description: Seconds between two weapon update.
+    Type: Number
+    Default: 1
+  JoinPartyInterval:
+    Description: Seconds between two join party interval.
+    Type: Number
+    Default: 1
   MinSendInvitationRate:
     Description: Seconds between two invitation send. (Set to 0 to make it unlimited)
+    Type: Number
+    Default: 1
+  ManageTeamInterval:
+    Description: Seconds between two manage team request. (Set to 0 to make it unlimited)
+    Type: Number
+    Default: 1
+  GetRoomsInterval:
+    Description: Seconds between two get rooms request. (Set to 0 to make it unlimited)
+    Type: Number
+    Default: 5
+  GetRoomLimit:
+    Description: how many get room request can be sent in a period
+    Type: Number
+    Default: 30
+  GetRoomLimitPeriod:
+    Description: how long get room request period
+    Type: Number
+    Default: 1
+  JoinRoomLimit:
+    Description: how many join room request can be sent in a period
+    Type: Number
+    Default: 100
+  JoinRoomLimitPeriod:
+    Description: how long join room request period
+    Type: Number
+    Default: 1
+  LeaveRoomLimit:
+    Description: how many leave room request can be sent in a period
+    Type: Number
+    Default: 100
+  LeaveRoomLimitPeriod:
+    Description: how long leave room request period
     Type: Number
     Default: 1
   InvitationExpire:
@@ -100,7 +147,7 @@ Parameters:
   PrivatePartyPasscodeLength:
     Description: the length of passcode in a private party.
     Type: Number
-    Default: 6
+    Default: 8
   GameSessionMaximumPlayerSessionCount:
     Description: the maximum number of player session in a game session of private party.
     Type: Number
@@ -155,6 +202,10 @@ Parameters:
     Description: the default weapon id
     Type: String
     Default: 'dbc067bd-1cb0-4545-beee-eb070d9cf23f'
+Conditions:
+  GameServerDeployed: !Equals
+    - !Ref GameServerDeployed
+    - 'true'
 Resources:
   awsTutorialWebSocketMMOEC2VPC:
     Type: AWS::EC2::VPC
@@ -254,13 +305,17 @@ Resources:
                 Effect: Allow
                 Action:
                   - dynamodb:PartiQLSelect
-                Resource:
-                  - !Ref TeamAssignmentTableArn
-                  - !Join
-                    - ''
-                    - - !Ref TeamAssignmentTableArn
-                      - '/index/'
-                      - !Ref WeaponIndex
+                Resource: !If
+                  - GameServerDeployed
+                  -
+                    - !Ref TeamAssignmentTableArn
+                    - !Join
+                      - ''
+                      - - !Ref TeamAssignmentTableArn
+                        - '/index/'
+                        - !Ref WeaponIndex
+                  -
+                    - '*'
               - Sid: GameLiftMatchmakingPolicy
                 Effect: Allow
                 Action:
@@ -280,8 +335,12 @@ Resources:
                 Effect: Allow
                 Action:
                   - gamelift:StartGameSessionPlacement
-                Resource:
-                  - !Ref GameLiftGameSessionQueueArn
+                Resource: !If
+                  - GameServerDeployed
+                  -
+                    - !Ref GameLiftGameSessionQueueArn
+                  -
+                    - '*'
       Tags:
         - Key: Usage
           Value: Youtube Streamer
@@ -303,11 +362,11 @@ Resources:
         - - !Ref ResourceNamePrefix
           - _WebSocket_MMO_EC2_LaunchTemplate
       LaunchTemplateData:
-        InstanceMarketOptions:
-          MarketType: spot
-          SpotOptions:
-            InstanceInterruptionBehavior: stop
-            SpotInstanceType: persistent
+#        InstanceMarketOptions:
+#          MarketType: capacity-block
+#          SpotOptions:
+#            InstanceInterruptionBehavior: stop
+#            SpotInstanceType: persistent
         InstanceType: !Ref WebSocketMMOEC2InstanceType
         IamInstanceProfile:
           Arn: !GetAtt awsTutorialWebSocketMMOIAMInstanceProfile.Arn
@@ -328,7 +387,7 @@ Resources:
 #          "manager_shard_number": 4,
 #          "private_party_passcode_refill_threshold": 16,
 #          "private_party_passcode_refill_size": 5000,
-#          "private_party_passcode_length": 6,
+#          "private_party_passcode_length": 8,
 #          "game_session_maximum_player_session_count": 8,
 #          "game_session_queue_name": "",
 #          "game_session_placement_query_interval": 5,
@@ -348,10 +407,20 @@ Resources:
             {
               "jwks_update_interval": ${JwksUpdateInterval},
               "position_update_interval": ${PositionUpdateInterval},
+              "weapon_update_interval": ${WeaponUpdateInterval},
+              "join_party_interval": ${JoinPartyInterval},
+              "min_send_invitation_rate": ${MinSendInvitationRate},
+              "manage_team_interval": ${ManageTeamInterval},
+              "get_rooms_interval": ${GetRoomsInterval},
+              "join_room_limit": ${GetRoomLimit},
+              "join_room_limit_period": ${GetRoomLimitPeriod},
+              "leave_room_limit": ${LeaveRoomLimit},
+              "leave_room_limit_period": ${LeaveRoomLimitPeriod},
+              "get_room_limit": ${GetRoomLimit},
+              "get_room_limit_period": ${GetRoomLimitPeriod},
               "region": "${AWS::Region}",
               "user_pool_id": "${CognitoUserPool}",
               "app_client_id": "${CognitoUserPoolClient}",
-              "min_send_invitation_rate": ${MinSendInvitationRate},
               "invitation_expire": ${InvitationExpire},
               "party_maximum_room_number": ${PartyMaximumRoomNumber},
               "private_party_maximum_room_number": ${PrivatePartyMaximumRoomNumber},
@@ -386,10 +455,10 @@ Resources:
             Tags:
               - Key: Usage
                 Value: Youtube Streamer
-          - ResourceType: spot-instances-request
-            Tags:
-              - Key: Usage
-                Value: Youtube Streamer
+#          - ResourceType: spot-instances-request
+#            Tags:
+#              - Key: Usage
+#                Value: Youtube Streamer
   awsTutorialWebSocketMMOEC2Instance:
     Type: AWS::EC2::Instance
     Properties:

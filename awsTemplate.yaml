@@ -2,304 +2,416 @@ AWSTemplateFormatVersion: '2010-09-09'
 
 Description: awsTutorial(main)
 Parameters:
-  ResourceNamePrefix:
-    Description: Prefix of resource name
-    Default: awstutorial
-    Type: String
-  UGCPartTemplateUrl:
-    Description: Url of the cloud formation template for cognito, cloudwatch
-      log  group, S3 resources.
-    Type: String
-    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_UGC.yaml
-  FriendSystemPartTemplateUrl:
-    Description: Url of the cloud formation template for friend system.
-    Type: String
-    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_FriendSystem.yaml
-  DeployWebSocketMMO:
-    Description: Deploy WebSocketMMO?
-    Type: String
-    Default: 'false'
-    AllowedValues:
-      - 'true'
-      - 'false'
-  WebSocketMMOPartTemplateUrl:
-    Description: Url of the cloud formation template for websocket mmo.
-    Type: String
-    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_WebSocketMMO.yaml
-  JwksUpdateInterval:
-    Description: Seconds between two jwks update
-    Type: Number
-    Default: 3600
-  PositionUpdateInterval:
-    Description: Seconds between two position update. (Set to 0 to make realtime MMO system)
-    Type: Number
-    Default: 5
-  MinSendInvitationRate:
-    Description: Seconds between two invitation send. (Set to 0 to make it unlimited)
-    Type: Number
-    Default: 1
-  InvitationExpire:
-    Description: Seconds between a invitation expired.
-    Type: Number
-    Default: 15
-  ManagerShardNumber:
-    Description: the number of room and party manager shard. (should be equal to the number of vcpu to get best performance)
-    Type: Number
-    Default: 16
-  PrivatePartyPasscodeRefillThreshold:
-    Description: when the number of available passcode in a private party is less than this value, the passcode will be refilled.
-    Type: Number
-    Default: 16
-  PrivatePartyPasscodeRefillSize:
-    Description: the number of passcode will be refilled when the number of available passcode in a private party is less than PrivatePartyPasscodeRefillThreshold.
-    Type: Number
-    Default: 5000
-  PrivatePartyPasscodeLength:
-    Description: the length of passcode in a private party.
-    Type: Number
-    Default: 6
-  GameSessionMaximumPlayerSessionCount:
-    Description: the maximum number of player session in a game session of private party.
-    Type: Number
-    Default: 8
-  GameSessionPlacementQueryInterval:
-    Description: the interval between two game session placement query.
-    Type: Number
-    Default: 5
-  WeaponIndex:
-    Description: the index name of weapon result index in dynamodb table.
-    Type: String
-    Default: 'byWeaponResult'
-  WeaponRateUpdateInterval:
-    Description: the interval between two weapon rate update.
-    Type: Number
-    Default: 600
-  StartGameSemaphoreNumber:
-    Description: the number of start game calls can be executed at the same time.
-    Type: Number
-    Default: 200
-  StartGameMatchmakingGateRangeMin:
-    Description: the minimal number of start matchmaking calls should be there before sending the actual call
-    Type: Number
-    Default: 1
-  StartGameMatchmakingGateRangeMax:
-    Description: the number of start game calls can be executed at the same time. (-1 means unlimited)
-    Type: Number
-    Default: -1
-  PartyBackupTime:
-    Description: how long the party info will be kept before delete so that players can rejoin the party.
-    Type: Number
-    Default: 90
-  SendRequestSizeThreshold:
-    Description: how long the send request queue size should be kept before dropping
-    Type: Number
-    Default: 20
-  DefaultWeaponId:
-    Description: the default weapon id
-    Type: String
-    Default: 'dbc067bd-1cb0-4545-beee-eb070d9cf23f'
-  WebSocketMMOEC2InstanceType:
-    Description: ec2 instance type of the web socket mmo server
-    Type: String
-    Default: t4g.nano
-  DeployGameServer:
-    Description: Deploy gameserver to gamelift?
-    Type: String
-    Default: 'false'
-    AllowedValues:
-      - 'true'
-      - 'false'
-  GameLiftPartTemplateUrl:
-    Description: Url of the cloud formation template for gamelift resources.
-    Type: String
-    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_GameLift.yaml
-  GameServerBuildBucket:
-    Description: S3 bucket for storing game server build files.
-    Type: String
-    Default: awstutorial-builds-ap-northeast-2
-  GameServerBuildKey:
-    Description: The key of the game server build file.
-    Type: String
-    Default: LinuxArm64Server.zip
-  GameServerBuildObjectVersion:
-    Description: The version of the game server build file.
-    Type: String
-    Default: VcQ6SOBlruNTiZM2AUqry3KfmK0Q1MdZ
-  GameServerBuildServerSdkVersion:
-    Description: The server sdk version of the game server build file.
-    Type: String
-    Default: 5.3.0
-  GameServerBuildVersion:
-    Description: Version of the game server build.
-    Type: String
-    Default: 1.0.0
-  GameServerLaunchPath:
-    Description: The launch path of the game server.
-    Type: String
-    Default: awsTutorial/Binaries/LinuxArm64/awsTutorialServer
-  GameLiftRegularGameSessionMaxPlayerNum:
-    Description: Max player number of the regular game
-    Type: Number
-    Default: 4
-  GameLiftPrivateGameSessionMaxPlayerNum:
-    Description: Max player number of the private game
-    Type: Number
-    Default: 20
-  MatchmakingPartTemplateUrl:
-    Description: Url of the cloud formation template for Matchmaking resources.
-    Type: String
-    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_Matchmaking.yaml
+    ResourceNamePrefix:
+        Description: Prefix of resource name
+        Default: awstutorial
+        Type: String
+    UGCPartTemplateUrl:
+        Description: Url of the cloud formation template for cognito, cloudwatch
+            log  group, S3 resources.
+        Type: String
+        Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_UGC.yaml
+    FriendSystemPartTemplateUrl:
+        Description: Url of the cloud formation template for friend system.
+        Type: String
+        Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_FriendSystem.yaml
+    DeployWebSocketMMO:
+        Description: Deploy WebSocketMMO?
+        Type: String
+        Default: 'false'
+        AllowedValues:
+            - 'true'
+            - 'false'
+    WebSocketMMOPartTemplateUrl:
+        Description: Url of the cloud formation template for websocket mmo.
+        Type: String
+        Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_WebSocketMMO.yaml
+    JwksUpdateInterval:
+        Description: Seconds between two jwks update
+        Type: Number
+        Default: 3600
+    PositionUpdateInterval:
+        Description: Seconds between two position update. (Set to 0 to make realtime MMO system)
+        Type: Number
+        Default: 2
+    WeaponUpdateInterval:
+        Description: Seconds between two weapon update.
+        Type: Number
+        Default: 1
+    JoinPartyInterval:
+        Description: Seconds between two join party interval.
+        Type: Number
+        Default: 1
+    MinSendInvitationRate:
+        Description: Seconds between two invitation send. (Set to 0 to make it unlimited)
+        Type: Number
+        Default: 1
+    ManageTeamInterval:
+        Description: Seconds between two manage team request. (Set to 0 to make it unlimited)
+        Type: Number
+        Default: 1
+    GetRoomsInterval:
+        Description: Seconds between two get rooms request. (Set to 0 to make it unlimited)
+        Type: Number
+        Default: 5
+    GetRoomLimit:
+        Description: how many get room request can be sent in a period
+        Type: Number
+        Default: 30
+    GetRoomLimitPeriod:
+        Description: how long get room request period
+        Type: Number
+        Default: 1
+    JoinRoomLimit:
+        Description: how many join room request can be sent in a period
+        Type: Number
+        Default: 100
+    JoinRoomLimitPeriod:
+        Description: how long join room request period
+        Type: Number
+        Default: 1
+    LeaveRoomLimit:
+        Description: how many leave room request can be sent in a period
+        Type: Number
+        Default: 100
+    LeaveRoomLimitPeriod:
+        Description: how long leave room request period
+        Type: Number
+        Default: 1
+    InvitationExpire:
+        Description: Seconds between a invitation expired.
+        Type: Number
+        Default: 15
+    ManagerShardNumber:
+        Description: the number of room and party manager shard. (should be equal to the number of vcpu to get best performance)
+        Type: Number
+        Default: 16
+    PrivatePartyPasscodeRefillThreshold:
+        Description: when the number of available passcode in a private party is less than this value, the passcode will be refilled.
+        Type: Number
+        Default: 16
+    PrivatePartyPasscodeRefillSize:
+        Description: the number of passcode will be refilled when the number of available passcode in a private party is less than PrivatePartyPasscodeRefillThreshold.
+        Type: Number
+        Default: 5000
+    PrivatePartyPasscodeLength:
+        Description: the length of passcode in a private party.
+        Type: Number
+        Default: 8
+    GameSessionMaximumPlayerSessionCount:
+        Description: the maximum number of player session in a game session of private party.
+        Type: Number
+        Default: 8
+    GameSessionPlacementQueryInterval:
+        Description: the interval between two game session placement query.
+        Type: Number
+        Default: 5
+    WeaponIndex:
+        Description: the index name of weapon result index in dynamodb table.
+        Type: String
+        Default: 'byWeaponResult'
+    WeaponRateUpdateInterval:
+        Description: the interval between two weapon rate update.
+        Type: Number
+        Default: 600
+    StartGameSemaphoreNumber:
+        Description: the number of start game calls can be executed at the same time.
+        Type: Number
+        Default: 200
+    StartGameMatchmakingGateRangeMin:
+        Description: the minimal number of start matchmaking calls should be there before sending the actual call
+        Type: Number
+        Default: 1
+    StartGameMatchmakingGateRangeMax:
+        Description: the number of start game calls can be executed at the same time. (-1 means unlimited)
+        Type: Number
+        Default: -1
+    PartyBackupTime:
+        Description: how long the party info will be kept before delete so that players can rejoin the party.
+        Type: Number
+        Default: 90
+    SendRequestSizeThreshold:
+        Description: how long the send request queue size should be kept before dropping
+        Type: Number
+        Default: 20
+    DefaultWeaponId:
+        Description: the default weapon id
+        Type: String
+        Default: 'dbc067bd-1cb0-4545-beee-eb070d9cf23f'
+    WebSocketMMOEC2InstanceType:
+        Description: ec2 instance type of the web socket mmo server
+        Type: String
+        Default: t4g.nano
+    DeployGameServer:
+        Description: Deploy gameserver to gamelift?
+        Type: String
+        Default: 'false'
+        AllowedValues:
+            - 'true'
+            - 'false'
+    GameLiftPartTemplateUrl:
+        Description: Url of the cloud formation template for gamelift resources.
+        Type: String
+        Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_GameLift.yaml
+    GameServerBuildBucket:
+        Description: S3 bucket for storing game server build files.
+        Type: String
+        Default: awstutorial-builds-ap-northeast-2
+    GameServerBuildKey:
+        Description: The key of the game server build file.
+        Type: String
+        Default: LinuxArm64Server.zip
+    GameServerBuildObjectVersion:
+        Description: The version of the game server build file.
+        Type: String
+        Default: B7rdibd3ZIuq_arlKtnjGPzJovGDZ2DN
+    GameServerBuildServerSdkVersion:
+        Description: The server sdk version of the game server build file.
+        Type: String
+        Default: 5.3.0
+    GameServerBuildVersion:
+        Description: Version of the game server build.
+        Type: String
+        Default: 1.0.0
+    GameServerLaunchPath:
+        Description: The launch path of the game server.
+        Type: String
+        Default: awsTutorial/Binaries/LinuxArm64/awsTutorialServer
+    GameLiftRegularGameSessionMaxPlayerNum:
+        Description: Max player number of the regular game
+        Type: Number
+        Default: 4
+    GameLiftPrivateGameSessionMaxPlayerNum:
+        Description: Max player number of the private game
+        Type: Number
+        Default: 20
+    MatchmakingPartTemplateUrl:
+        Description: Url of the cloud formation template for Matchmaking resources.
+        Type: String
+        Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_Matchmaking.yaml
 Conditions:
-  ShouldDeployWebSocketMMO: !Equals
-    - !Ref DeployWebSocketMMO
-    - 'true'
-  ShouldDeployGameServer: !Equals
-    - !Ref DeployGameServer
-    - 'true'
+    ShouldDeployGameServer: !Equals
+        - !Ref DeployGameServer
+        - 'true'
+    ShouldDeployWebSocketMMO: !Equals
+        - !Ref DeployWebSocketMMO
+        - 'true'
+    ShouldDeployWebSocketMMOWithGameServer: !And
+        - !Condition ShouldDeployWebSocketMMO
+        - !Condition ShouldDeployGameServer
+    ShouldDeployWebSocketMMOWithoutGameServer: !And
+        - !Condition ShouldDeployWebSocketMMO
+        - !Not
+            - !Condition ShouldDeployGameServer
 Resources:
-  awsTutorialUGCStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Ref UGCPartTemplateUrl
-      Parameters:
-        ResourceNamePrefix: !Ref ResourceNamePrefix
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
-  awsTutorialGameLiftStack:
-    Type: AWS::CloudFormation::Stack
-    Condition: ShouldDeployGameServer
-    Properties:
-      TemplateURL: !Ref GameLiftPartTemplateUrl
-      Parameters:
-        ResourceNamePrefix: !Ref ResourceNamePrefix
-        GameServerBuildBucket: !Ref GameServerBuildBucket
-        GameServerBuildKey: !Ref GameServerBuildKey
-        GameServerBuildObjectVersion: !Ref GameServerBuildObjectVersion
-        GameServerBuildServerSdkVersion: !Ref GameServerBuildServerSdkVersion
-        GameServerBuildVersion: !Ref GameServerBuildVersion
-        GameServerLaunchPath: !Ref GameServerLaunchPath
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
-  awsTutorialMatchmaking:
-    Type: AWS::CloudFormation::Stack
-    Condition: ShouldDeployGameServer
-    DependsOn: awsTutorialGameLiftStack
-    Properties:
-      TemplateURL: !Ref MatchmakingPartTemplateUrl
-      Parameters:
-        ResourceNamePrefix: !Ref ResourceNamePrefix
-        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
-        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
-        GameLiftGameSessionQueueArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueArn
-        GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
-        WeaponIndex: !Ref WeaponIndex
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
-  awsTutorialFriendSystemStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn: awsTutorialUGCStack
-    Properties:
-      TemplateURL: !Ref FriendSystemPartTemplateUrl
-      Parameters:
-        ResourceNamePrefix: !Ref ResourceNamePrefix
-        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-        CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
-        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
-  awsTutorialWebSocketMMOStack:
-    Type: AWS::CloudFormation::Stack
-    Condition: ShouldDeployWebSocketMMO
-    DependsOn:
-      - awsTutorialUGCStack
-      - awsTutorialMatchmaking
-    Properties:
-      TemplateURL: !Ref WebSocketMMOPartTemplateUrl
-      Parameters:
-        ResourceNamePrefix: !Ref ResourceNamePrefix
-        CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-        CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
-        JwksUpdateInterval: !Ref JwksUpdateInterval
-        PositionUpdateInterval: !Ref PositionUpdateInterval
-        MinSendInvitationRate: !Ref MinSendInvitationRate
-        InvitationExpire: !Ref InvitationExpire
-        PartyMaximumRoomNumber: !Ref GameLiftRegularGameSessionMaxPlayerNum
-        PrivatePartyMaximumRoomNumber: !Ref GameLiftPrivateGameSessionMaxPlayerNum
-        ManagerShardNumber: !Ref ManagerShardNumber
-        PrivatePartyPasscodeRefillThreshold: !Ref PrivatePartyPasscodeRefillThreshold
-        PrivatePartyPasscodeRefillSize: !Ref PrivatePartyPasscodeRefillSize
-        PrivatePartyPasscodeLength: !Ref PrivatePartyPasscodeLength
-        GameSessionMaximumPlayerSessionCount: !Ref GameSessionMaximumPlayerSessionCount
-        GameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
-        GameSessionPlacementQueryInterval: !Ref GameSessionPlacementQueryInterval
-        TeamAssignmentTableName: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingMatchTeamAssignmentTableName
-        TeamAssignmentTableArn: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingMatchTeamAssignmentTableArn
-        GameLiftGameSessionQueueArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueArn
-        WeaponIndex: !Ref WeaponIndex
-        MatchmakingConfiguration: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingConfiguration
-        WeaponRateUpdateInterval: !Ref WeaponRateUpdateInterval
-        StartGameSemaphoreNumber: !Ref StartGameSemaphoreNumber
-        StartGameMatchmakingGateRangeMin: !Ref StartGameMatchmakingGateRangeMin
-        StartGameMatchmakingGateRangeMax: !Ref StartGameMatchmakingGateRangeMax
-        PartyBackupTime: !Ref PartyBackupTime
-        SendRequestSizeThreshold: !Ref SendRequestSizeThreshold
-        DefaultWeaponId: !Ref DefaultWeaponId
-      Tags:
-        - Key: Usage
-          Value: Youtube Streamer
+    awsTutorialUGCStack:
+        Type: AWS::CloudFormation::Stack
+        Properties:
+            TemplateURL: !Ref UGCPartTemplateUrl
+            Parameters:
+                ResourceNamePrefix: !Ref ResourceNamePrefix
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialGameLiftStack:
+        Type: AWS::CloudFormation::Stack
+        Condition: ShouldDeployGameServer
+        Properties:
+            TemplateURL: !Ref GameLiftPartTemplateUrl
+            Parameters:
+                ResourceNamePrefix: !Ref ResourceNamePrefix
+                GameServerBuildBucket: !Ref GameServerBuildBucket
+                GameServerBuildKey: !Ref GameServerBuildKey
+                GameServerBuildObjectVersion: !Ref GameServerBuildObjectVersion
+                GameServerBuildServerSdkVersion: !Ref GameServerBuildServerSdkVersion
+                GameServerBuildVersion: !Ref GameServerBuildVersion
+                GameServerLaunchPath: !Ref GameServerLaunchPath
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialMatchmaking:
+        Type: AWS::CloudFormation::Stack
+        Condition: ShouldDeployGameServer
+        DependsOn:
+            - awsTutorialUGCStack
+            - awsTutorialGameLiftStack
+        Properties:
+            TemplateURL: !Ref MatchmakingPartTemplateUrl
+            Parameters:
+                ResourceNamePrefix: !Ref ResourceNamePrefix
+                CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+                CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+                CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+                GameLiftGameSessionQueueArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueArn
+                GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
+                WeaponIndex: !Ref WeaponIndex
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialFriendSystemStack:
+        Type: AWS::CloudFormation::Stack
+        DependsOn: awsTutorialUGCStack
+        Properties:
+            TemplateURL: !Ref FriendSystemPartTemplateUrl
+            Parameters:
+                ResourceNamePrefix: !Ref ResourceNamePrefix
+                CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+                CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+                CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialWebSocketMMOStackWithGameServer:
+        Type: AWS::CloudFormation::Stack
+        Condition: ShouldDeployWebSocketMMOWithGameServer
+        DependsOn:
+            - awsTutorialMatchmaking
+        Properties:
+            TemplateURL: !Ref WebSocketMMOPartTemplateUrl
+            Parameters:
+                ResourceNamePrefix: !Ref ResourceNamePrefix
+                GameServerDeployed: !Ref DeployGameServer
+                CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+                CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+                JwksUpdateInterval: !Ref JwksUpdateInterval
+                PositionUpdateInterval: !Ref PositionUpdateInterval
+                WeaponUpdateInterval: !Ref WeaponUpdateInterval
+                JoinPartyInterval: !Ref JoinPartyInterval
+                MinSendInvitationRate: !Ref MinSendInvitationRate
+                ManageTeamInterval: !Ref ManageTeamInterval
+                GetRoomsInterval: !Ref GetRoomsInterval
+                GetRoomLimit: !Ref GetRoomLimit
+                GetRoomLimitPeriod: !Ref GetRoomLimitPeriod
+                JoinRoomLimit: !Ref JoinRoomLimit
+                JoinRoomLimitPeriod: !Ref JoinRoomLimitPeriod
+                LeaveRoomLimit: !Ref LeaveRoomLimit
+                LeaveRoomLimitPeriod: !Ref LeaveRoomLimitPeriod
+                InvitationExpire: !Ref InvitationExpire
+                PartyMaximumRoomNumber: !Ref GameLiftRegularGameSessionMaxPlayerNum
+                PrivatePartyMaximumRoomNumber: !Ref GameLiftPrivateGameSessionMaxPlayerNum
+                ManagerShardNumber: !Ref ManagerShardNumber
+                PrivatePartyPasscodeRefillThreshold: !Ref PrivatePartyPasscodeRefillThreshold
+                PrivatePartyPasscodeRefillSize: !Ref PrivatePartyPasscodeRefillSize
+                PrivatePartyPasscodeLength: !Ref PrivatePartyPasscodeLength
+                GameSessionMaximumPlayerSessionCount: !Ref GameSessionMaximumPlayerSessionCount
+                GameSessionQueueName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
+                GameSessionPlacementQueryInterval: !Ref GameSessionPlacementQueryInterval
+                TeamAssignmentTableName: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingMatchTeamAssignmentTableName
+                TeamAssignmentTableArn: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingMatchTeamAssignmentTableArn
+                GameLiftGameSessionQueueArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueArn
+                WeaponIndex: !Ref WeaponIndex
+                MatchmakingConfiguration: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingConfiguration
+                WeaponRateUpdateInterval: !Ref WeaponRateUpdateInterval
+                StartGameSemaphoreNumber: !Ref StartGameSemaphoreNumber
+                StartGameMatchmakingGateRangeMin: !Ref StartGameMatchmakingGateRangeMin
+                StartGameMatchmakingGateRangeMax: !Ref StartGameMatchmakingGateRangeMax
+                PartyBackupTime: !Ref PartyBackupTime
+                SendRequestSizeThreshold: !Ref SendRequestSizeThreshold
+                DefaultWeaponId: !Ref DefaultWeaponId
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialWebSocketMMOStackWithoutGameServer:
+        Type: AWS::CloudFormation::Stack
+        Condition: ShouldDeployWebSocketMMOWithoutGameServer
+        DependsOn:
+            - awsTutorialUGCStack
+        Properties:
+            TemplateURL: !Ref WebSocketMMOPartTemplateUrl
+            Parameters:
+                ResourceNamePrefix: !Ref ResourceNamePrefix
+                GameServerDeployed: !Ref DeployGameServer
+                CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+                CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+                JwksUpdateInterval: !Ref JwksUpdateInterval
+                PositionUpdateInterval: !Ref PositionUpdateInterval
+                WeaponUpdateInterval: !Ref WeaponUpdateInterval
+                JoinPartyInterval: !Ref JoinPartyInterval
+                MinSendInvitationRate: !Ref MinSendInvitationRate
+                ManageTeamInterval: !Ref ManageTeamInterval
+                GetRoomsInterval: !Ref GetRoomsInterval
+                GetRoomLimit: !Ref GetRoomLimit
+                GetRoomLimitPeriod: !Ref GetRoomLimitPeriod
+                JoinRoomLimit: !Ref JoinRoomLimit
+                JoinRoomLimitPeriod: !Ref JoinRoomLimitPeriod
+                LeaveRoomLimit: !Ref LeaveRoomLimit
+                LeaveRoomLimitPeriod: !Ref LeaveRoomLimitPeriod
+                InvitationExpire: !Ref InvitationExpire
+                PartyMaximumRoomNumber: !Ref GameLiftRegularGameSessionMaxPlayerNum
+                PrivatePartyMaximumRoomNumber: !Ref GameLiftPrivateGameSessionMaxPlayerNum
+                ManagerShardNumber: !Ref ManagerShardNumber
+                PrivatePartyPasscodeRefillThreshold: !Ref PrivatePartyPasscodeRefillThreshold
+                PrivatePartyPasscodeRefillSize: !Ref PrivatePartyPasscodeRefillSize
+                PrivatePartyPasscodeLength: !Ref PrivatePartyPasscodeLength
+                GameSessionMaximumPlayerSessionCount: !Ref GameSessionMaximumPlayerSessionCount
+                GameSessionQueueName: ''
+                GameSessionPlacementQueryInterval: !Ref GameSessionPlacementQueryInterval
+                TeamAssignmentTableName: ''
+                TeamAssignmentTableArn: ''
+                GameLiftGameSessionQueueArn: ''
+                WeaponIndex: !Ref WeaponIndex
+                MatchmakingConfiguration: ''
+                WeaponRateUpdateInterval: !Ref WeaponRateUpdateInterval
+                StartGameSemaphoreNumber: !Ref StartGameSemaphoreNumber
+                StartGameMatchmakingGateRangeMin: !Ref StartGameMatchmakingGateRangeMin
+                StartGameMatchmakingGateRangeMax: !Ref StartGameMatchmakingGateRangeMax
+                PartyBackupTime: !Ref PartyBackupTime
+                SendRequestSizeThreshold: !Ref SendRequestSizeThreshold
+                DefaultWeaponId: !Ref DefaultWeaponId
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
 Outputs:
-  awsTutorialRegion:
-    Description: AWS Region
-    Value: !Ref AWS::Region
-  awsTutorialCognitoIdentityPoolId:
-    Description: Cognito Identity Pool ID
-    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoIdentityPoolId
-  awsTutorialCognitoUserPoolId:
-    Description: Cognito User Pool ID
-    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-  awsTutorialCognitoUserPoolClient:
-    Description: Link to Cognito User Pool Client
-    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cognito/v2/idp/user-pools/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId}/applications/app-clients/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId}/quick-setup-guide?region=${AWS::Region}"
-  awsTutorialCognitoUserPoolClientId:
-    Description: Cognito User Pool Client ID
-    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
-  awsTutorialAliasId:
-    Condition: ShouldDeployGameServer
-    Description: GameLift Alias ID
-    Value: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
-  awsTutorialGameSessionQueueName:
-    Condition: ShouldDeployGameServer
-    Description: GameLift Game Session Queue Name
-    Value: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
-  awsTutorialUserGeneratedContentS3Bucket:
-    Description: User Generated Content S3 Bucket
-    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialUserGeneratedContentS3Bucket
-  awsTutorialLogGroupName:
-    Description: Log Group Name
-    Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialLogGroupName
-  awsTutorialFriendSystemGraphQLHost:
-    Description: Friend System GraphQL Host
-    Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLHost
-  awsTutorialFriendSystemGraphQLEndpoint:
-    Description: Friend System GraphQL Endpoint
-    Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLEndpoint
-  awsTutorialFriendSystemGraphQLRealtimeEndpoint:
-    Description: Friend System GraphQL realtime Endpoint
-    Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLRealtimeEndpoint
-  awsTutorialWebSocketMMODNSName:
-    Condition: ShouldDeployWebSocketMMO
-    Description: The DNSName of the WebSocket MMO Server
-    Value: !GetAtt awsTutorialWebSocketMMOStack.Outputs.awsTutorialWebSocketMMODNSName
-  awsTutorialMatchmakingGraphQLHost:
-    Condition: ShouldDeployGameServer
-    Description: Matchmaking GraphQL Host
-    Value: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingGraphQLHost
-  awsTutorialMatchmakingGraphQLEndpoint:
-    Condition: ShouldDeployGameServer
-    Description: Matchmaking GraphQL Endpoint
-    Value: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingGraphQLEndpoint
+    awsTutorialRegion:
+        Description: AWS Region
+        Value: !Ref AWS::Region
+    awsTutorialCognitoIdentityPoolId:
+        Description: Cognito Identity Pool ID
+        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoIdentityPoolId
+    awsTutorialCognitoUserPoolId:
+        Description: Cognito User Pool ID
+        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+    awsTutorialCognitoUserPoolClient:
+        Description: Link to Cognito User Pool Client
+        Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cognito/v2/idp/user-pools/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId}/applications/app-clients/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId}/quick-setup-guide?region=${AWS::Region}"
+    awsTutorialCognitoUserPoolClientId:
+        Description: Cognito User Pool Client ID
+        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+    awsTutorialAliasId:
+        Condition: ShouldDeployGameServer
+        Description: GameLift Alias ID
+        Value: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialAliasId
+    awsTutorialGameSessionQueueName:
+        Condition: ShouldDeployGameServer
+        Description: GameLift Game Session Queue Name
+        Value: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
+    awsTutorialUserGeneratedContentS3Bucket:
+        Description: User Generated Content S3 Bucket
+        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialUserGeneratedContentS3Bucket
+    awsTutorialLogGroupName:
+        Description: Log Group Name
+        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialLogGroupName
+    awsTutorialFriendSystemGraphQLHost:
+        Description: Friend System GraphQL Host
+        Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLHost
+    awsTutorialFriendSystemGraphQLEndpoint:
+        Description: Friend System GraphQL Endpoint
+        Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLEndpoint
+    awsTutorialFriendSystemGraphQLRealtimeEndpoint:
+        Description: Friend System GraphQL realtime Endpoint
+        Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLRealtimeEndpoint
+    awsTutorialWebSocketMMODNSName:
+        Condition: ShouldDeployWebSocketMMO
+        Description: The DNSName of the WebSocket MMO Server
+        Value: !If
+            - ShouldDeployGameServer
+            - !GetAtt awsTutorialWebSocketMMOStackWithGameServer.Outputs.awsTutorialWebSocketMMODNSName
+            - !GetAtt awsTutorialWebSocketMMOStackWithoutGameServer.Outputs.awsTutorialWebSocketMMODNSName
+    awsTutorialMatchmakingGraphQLHost:
+        Condition: ShouldDeployGameServer
+        Description: Matchmaking GraphQL Host
+        Value: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingGraphQLHost
+    awsTutorialMatchmakingGraphQLEndpoint:
+        Condition: ShouldDeployGameServer
+        Description: Matchmaking GraphQL Endpoint
+        Value: !GetAtt awsTutorialMatchmaking.Outputs.awsTutorialMatchmakingGraphQLEndpoint
