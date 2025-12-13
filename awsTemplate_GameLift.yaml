@@ -24,6 +24,9 @@ Parameters:
   GameServerLaunchPath:
     Description: The launch path of the game server.
     Type: String
+  PrometheusWorkspaceArn:
+    Description: The Arn of the Prometheus workspace.
+    Type: String
 Resources:
   awsTutorialGameLiftRole:
     Type: AWS::IAM::Role
@@ -67,7 +70,7 @@ Resources:
         - ''
         - - !Ref ResourceNamePrefix
           - _Build
-      OperatingSystem: AMAZON_LINUX_2
+      OperatingSystem: AMAZON_LINUX_2023
       ServerSdkVersion: !Ref GameServerBuildServerSdkVersion
       StorageLocation:
         Bucket: !Ref GameServerBuildBucket
@@ -92,9 +95,32 @@ Resources:
                 - gamelift.amazonaws.com
             Action:
               - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/GameLiftContainerFleetPolicy
       Tags:
         - Key: Usage
           Value: Youtube Streamer
+  awsTutorialTelemetryMetricsPolicy:
+    Type: AWS::IAM::RolePolicy
+    Properties:
+      PolicyName: !Join
+        - ''
+        -   - !Ref ResourceNamePrefix
+            - _GameLift_TelemetryMetrics_FleetInstance_Policy
+      RoleName: !Ref awsTutorialGameLiftFleetInstanceRole
+      PolicyDocument:
+        Statement:
+          -   Effect: Allow
+              Action:
+                - aps:RemoteWrite
+              Resource: !Ref PrometheusWorkspaceArn
+          -   Effect: Allow
+              Action:
+                - logs:PutLogEvents
+                - logs:CreateLogStream
+                - logs:CreateLogGroup
+                - logs:PutRetentionPolicy
+              Resource: !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:*:log-stream:*'
   awsTutorialFleet:
     Type: AWS::GameLift::Fleet
     Properties:
