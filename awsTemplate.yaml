@@ -62,6 +62,22 @@ Parameters:
         Description: how long get room request period
         Type: Number
         Default: 1
+    GroupOperationLimit:
+        Description: how many join / leave group request can be sent in a period
+        Type: Number
+        Default: 30
+    GroupOperationLimitPeriod:
+        Description: how long join / leave group request period
+        Type: Number
+        Default: 1
+    P2PInfoTransferLimit:
+        Description: how many submit local description / candidate request can be sent in a period
+        Type: Number
+        Default: 300
+    P2PInfoTransferLimitPeriod:
+        Description: how long submit local description / candidate request period
+        Type: Number
+        Default: 1
     JoinRoomLimit:
         Description: how many join room request can be sent in a period
         Type: Number
@@ -286,6 +302,10 @@ Resources:
                 GetRoomsInterval: !Ref GetRoomsInterval
                 GetRoomLimit: !Ref GetRoomLimit
                 GetRoomLimitPeriod: !Ref GetRoomLimitPeriod
+                GroupOperationLimit: !Ref GroupOperationLimit
+                GroupOperationLimitPeriod: !Ref GroupOperationLimitPeriod
+                P2PInfoTransferLimit: !Ref P2PInfoTransferLimit
+                P2PInfoTransferLimitPeriod: !Ref P2PInfoTransferLimitPeriod
                 JoinRoomLimit: !Ref JoinRoomLimit
                 JoinRoomLimitPeriod: !Ref JoinRoomLimitPeriod
                 LeaveRoomLimit: !Ref LeaveRoomLimit
@@ -336,6 +356,10 @@ Resources:
                 GetRoomsInterval: !Ref GetRoomsInterval
                 GetRoomLimit: !Ref GetRoomLimit
                 GetRoomLimitPeriod: !Ref GetRoomLimitPeriod
+                GroupOperationLimit: !Ref GroupOperationLimit
+                GroupOperationLimitPeriod: !Ref GroupOperationLimitPeriod
+                P2PInfoTransferLimit: !Ref P2PInfoTransferLimit
+                P2PInfoTransferLimitPeriod: !Ref P2PInfoTransferLimitPeriod
                 JoinRoomLimit: !Ref JoinRoomLimit
                 JoinRoomLimitPeriod: !Ref JoinRoomLimitPeriod
                 LeaveRoomLimit: !Ref LeaveRoomLimit
@@ -411,6 +435,13 @@ Outputs:
             - ShouldDeployGameServer
             - !GetAtt awsTutorialWebSocketMMOStackWithGameServer.Outputs.awsTutorialWebSocketMMODNSName
             - !GetAtt awsTutorialWebSocketMMOStackWithoutGameServer.Outputs.awsTutorialWebSocketMMODNSName
+    awsTutorialEmbeddedVoiceChatStunTurnHost:
+        Condition: ShouldDeployWebSocketMMO
+        Description: The host of the Embedded Voice Chat Stun / turn Server
+        Value: !If
+            - ShouldDeployGameServer
+            - !GetAtt awsTutorialWebSocketMMOStackWithGameServer.Outputs.awsTutorialEmbeddedVoiceChatIpAddress
+            - !GetAtt awsTutorialWebSocketMMOStackWithoutGameServer.Outputs.awsTutorialEmbeddedVoiceChatIpAddress
     awsTutorialMatchmakingGraphQLHost:
         Condition: ShouldDeployGameServer
         Description: Matchmaking GraphQL Host

@@ -10,7 +10,7 @@ Mappings:
     ap-northeast-1:
       AMI: ami-069465f617fd5a3f8
     ap-northeast-2:
-      AMI: ami-061ece8bd49124a10
+      AMI: ami-059bfbb93b4f466fc
     ap-northeast-3:
       AMI: ami-02885cb2cfc235568
     ap-southeast-1:
@@ -102,6 +102,22 @@ Parameters:
     Default: 30
   GetRoomLimitPeriod:
     Description: how long get room request period
+    Type: Number
+    Default: 1
+  GroupOperationLimit:
+    Description: how many join / leave group request can be sent in a period
+    Type: Number
+    Default: 30
+  GroupOperationLimitPeriod:
+    Description: how long join / leave group request period
+    Type: Number
+    Default: 1
+  P2PInfoTransferLimit:
+    Description: how many submit local description / candidate request can be sent in a period
+    Type: Number
+    Default: 300
+  P2PInfoTransferLimitPeriod:
+    Description: how long submit local description / candidate request period
     Type: Number
     Default: 1
   JoinRoomLimit:
@@ -276,6 +292,42 @@ Resources:
       FromPort: 8000
       ToPort: 8000
       SourceSecurityGroupId: !Ref awsTutorialWebSocketMMOELBSecurityGroup
+  awsTutorialWebSOcketMMOEC2InstanceSecurityGroupEmbeddedVoiceChatStunTCPIngressFromELB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Embedded Voice Chat Stun TCP Ingress from ELB
+      GroupId: !Ref awsTutorialWebSocketMMOEC2InstanceSecurityGroup
+      IpProtocol: tcp
+      FromPort: 19302
+      ToPort: 19302
+      CidrIp: 0.0.0.0/0
+  awsTutorialWebSOcketMMOEC2InstanceSecurityGroupEmbeddedVoiceChatStunUDPIngressFromELB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Embedded Voice Chat Stun UDP Ingress from ELB
+      GroupId: !Ref awsTutorialWebSocketMMOEC2InstanceSecurityGroup
+      IpProtocol: udp
+      FromPort: 19302
+      ToPort: 19302
+      CidrIp: 0.0.0.0/0
+  awsTutorialWebSOcketMMOEC2InstanceSecurityGroupEmbeddedVoiceChatTurnTCPIngressFromELB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Embedded Voice Chat Turn TCP Ingress from ELB
+      GroupId: !Ref awsTutorialWebSocketMMOEC2InstanceSecurityGroup
+      IpProtocol: tcp
+      FromPort: 49152
+      ToPort: 60000
+      CidrIp: 0.0.0.0/0
+  awsTutorialWebSOcketMMOEC2InstanceSecurityGroupEmbeddedVoiceChatTurnUDPIngressFromELB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Embedded Voice Chat Turn UDP Ingress from ELB
+      GroupId: !Ref awsTutorialWebSocketMMOEC2InstanceSecurityGroup
+      IpProtocol: udp
+      FromPort: 49152
+      ToPort: 60000
+      CidrIp: 0.0.0.0/0
   awsTutorialWebSocketMMORole:
     Type: AWS::IAM::Role
     Properties:
@@ -412,12 +464,16 @@ Resources:
               "min_send_invitation_rate": ${MinSendInvitationRate},
               "manage_team_interval": ${ManageTeamInterval},
               "get_rooms_interval": ${GetRoomsInterval},
-              "join_room_limit": ${GetRoomLimit},
-              "join_room_limit_period": ${GetRoomLimitPeriod},
+              "join_room_limit": ${JoinRoomLimit},
+              "join_room_limit_period": ${JoinRoomLimitPeriod},
               "leave_room_limit": ${LeaveRoomLimit},
               "leave_room_limit_period": ${LeaveRoomLimitPeriod},
               "get_room_limit": ${GetRoomLimit},
               "get_room_limit_period": ${GetRoomLimitPeriod},
+              "group_operation_limit": ${GroupOperationLimit},
+              "group_operation_limit_period": ${GroupOperationLimitPeriod},
+              "p2p_info_transfer_limit": ${P2PInfoTransferLimit},
+              "p2p_info_transfer_limit_period": ${P2PInfoTransferLimitPeriod},
               "region": "${AWS::Region}",
               "user_pool_id": "${CognitoUserPool}",
               "app_client_id": "${CognitoUserPoolClient}",
@@ -677,6 +733,22 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 3.29.57.0/26
+        - IpProtocol: tcp
+          FromPort: 19302
+          ToPort: 19302
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 49152
+          ToPort: 60000
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 19302
+          ToPort: 19302
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 49152
+          ToPort: 60000
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Usage
           Value: Youtube Streamer
@@ -715,6 +787,25 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
+  awsTutorialWebSocketMMOELBEmbeddedVoiceChatStunTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - '-EBVC-Stun-ELB-TG'
+      HealthCheckPath: /health
+      HealthCheckPort: 8000
+      HealthCheckProtocol: HTTP
+      Protocol: TCP_UDP
+      Port: 19302
+      VpcId: !Ref awsTutorialWebSocketMMOEC2VPC
+      TargetType: instance
+      Targets:
+        - Id: !Ref awsTutorialWebSocketMMOEC2Instance
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
   awsTutorialWebSocketMMOELBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -724,6 +815,15 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref awsTutorialWebSocketMMOELBTargetGroup
+  awsTutorialWebSocketMMOELBEmbeddedVoiceChatStunListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref awsTutorialWebSocketMMOELB
+      Protocol: TCP_UDP
+      Port: 19302
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref awsTutorialWebSocketMMOELBEmbeddedVoiceChatStunTargetGroup
   awsTutorialWebSocketMMOCloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -776,3 +876,8 @@ Outputs:
     Value: !GetAtt awsTutorialWebSocketMMOCloudFrontDistribution.DomainName
     Export:
       Name: !Sub awsTutorialWebSocketMMODNSName
+  awsTutorialEmbeddedVoiceChatIpAddress:
+    Description: The ip address of the Embedded Voice Chat Stun Server
+    Value: !GetAtt awsTutorialWebSocketMMOEC2Instance.PublicIp
+    Export:
+      Name: !Sub awsTutorialEmbeddedVoiceChatIpAddress
