@@ -4,43 +4,43 @@ Description: awsTutorial(WebSocket MMO part)
 Mappings:
   AMIRegionMappings:
     ap-east-1:
-      AMI: ami-0f2cf13a2f7dbd137
+      AMI: ami-037ccff828a01334b
     ap-south-1:
-      AMI: ami-0bee3f474c6b0ebba
+      AMI: ami-03b1cf2cce3fd5034
     ap-northeast-1:
-      AMI: ami-083ef7e0177a93269
+      AMI: ami-04169cd7b48907f2b
     ap-northeast-2:
-      AMI: ami-059bfbb93b4f466fc
+      AMI: ami-0418757705eac8152
     ap-northeast-3:
-      AMI: ami-042dadcdf3e3cb343
+      AMI: ami-0810d6a3858f4904a
     ap-southeast-1:
-      AMI: ami-0e97742a19371eb27
+      AMI: ami-0fb0f1d61c4d278be
     ap-southeast-2:
-      AMI: ami-0722634c9f20619ca
+      AMI: ami-0de0c0c6a2211377c
     ca-central-1:
-      AMI: ami-023ac9340b2af3493
+      AMI: ami-08761a31519a9bd51
     eu-central-1:
-      AMI: ami-08f2ae5778c0e3111
+      AMI: ami-036544662caad202e
     eu-west-1:
-      AMI: ami-053a2e2c06be231aa
+      AMI: ami-06d9bf8114afaeb36
     eu-west-2:
-      AMI: ami-02f90534414e7bfc2
+      AMI: ami-0ce391e0aab33e6a1
     eu-west-3:
-      AMI: ami-0291d0fc36c1bdefb
+      AMI: ami-0e12438fbc843f41b
     eu-north-1:
-      AMI: ami-0a5415056a4a478fc
+      AMI: ami-0d8a361b458f59c7b
     me-south-1:
-      AMI: ami-0e642b240df0bce85
+      AMI: ami-0775e1d561de20f92
     sa-east-1:
-      AMI: ami-0db31bb64325c13b1
+      AMI: ami-0209c0fb11bf6acca
     us-east-1:
-      AMI: ami-08444b77f0136977e
+      AMI: ami-036d2d69d66943c88
     us-east-2:
-      AMI: ami-048cc30ab35879196
+      AMI: ami-00d7169367f5575a5
     us-west-1:
-      AMI: ami-0ee376051cf603415
+      AMI: ami-053a77de3bf8ae9c6
     us-west-2:
-      AMI: ami-06be3f9850b9255c3
+      AMI: ami-01c54b761ff871a8e
 Parameters:
   ResourceNamePrefix:
     Description: Prefix of resource name
@@ -364,7 +364,7 @@ Resources:
                     - !Join
                       - ''
                       - - !Ref TeamAssignmentTableArn
-                        - '/index/'
+                        - '.'
                         - !Ref WeaponIndex
                   -
                     - '*'
@@ -393,6 +393,8 @@ Resources:
                     - !Ref GameLiftGameSessionQueueArn
                   -
                     - '*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
       Tags:
         - Key: Usage
           Value: Youtube Streamer

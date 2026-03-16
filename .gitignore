@@ -21,3 +21,5 @@ PackExampleProject.sh
 /IOS
 /Linux
 locations.txt
+CopyAMI.sh
+PublicAMI.sh

@@ -6,7 +6,63 @@ Parameters:
     Description: Prefix of resource name
     Default: awstutorial
     Type: String
+  SteamOAuthPartTemplateUrl:
+    Description: Url of the cloud formation template for steam oauth.
+    Type: String
+    Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_SteamOAuth.yaml
+  SteamOAuthEC2InstanceType:
+    Description: ec2 instance type of the steam oauth server
+    Type: String
+    Default: t4g.nano
+  SteamAPIKey:
+    Description: Steam API Key for authentication
+    Type: String
+  SteamAPPId:
+    Description: Steam App ID for authentication
+    Type: String
+  SteamIdentity:
+    Description: Steam Identity for authentication
+    Type: String
+    Default: 'awsTutorial'
+  AuthCodeValidity:
+    Description: auth code validity in seconds
+    Type: Number
+    Default: 300
+  DefaultTokenValidity:
+    Description: default token validity in seconds
+    Type: Number
+    Default: 3600
+  AccessTokenValidity:
+    Description: access token validity in seconds
+    Type: Number
+    Default: 3600
+  RefreshTokenValidity:
+    Description: refresh token validity in seconds
+    Type: Number
+    Default: 2592000
+  IdTokenValidity:
+    Description: id token validity in seconds
+    Type: Number
+    Default: 3600
 Resources:
+  awsTutorialSteamOAuthStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref SteamOAuthPartTemplateUrl
+      Parameters:
+        ResourceNamePrefix: !Ref ResourceNamePrefix
+        SteamOAuthEC2InstanceType: !Ref SteamOAuthEC2InstanceType
+        SteamAPIKey: !Ref SteamAPIKey
+        SteamAPPId: !Ref SteamAPPId
+        SteamIdentity: !Ref SteamIdentity
+        AuthCodeValidity: !Ref AuthCodeValidity
+        DefaultTokenValidity: !Ref DefaultTokenValidity
+        AccessTokenValidity: !Ref AccessTokenValidity
+        RefreshTokenValidity: !Ref RefreshTokenValidity
+        IdTokenValidity: !Ref IdTokenValidity
+      Tags:
+        -   Key: Usage
+            Value: Youtube Streamer
   awsTutorialLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -25,12 +81,103 @@ Resources:
       BucketName: !Join
         - ''
         - - !Ref ResourceNamePrefix
-          - '-user-generated-content-bucket'
+          - '-ugc-bucket-'
+          - !Select
+            - 2
+            - !Split
+              - '/'
+              - !Ref AWS::StackId
       VersioningConfiguration:
         Status: Enabled
       Tags:
         - Key: Usage
           Value: Youtube Streamer
+  awsTutorialCustomAuthLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _CustomAuth_Lambda_Function_Role
+      Description: Role for AWS Lambda Functions Cognito User Pool
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - Lambda_Functions_Cognito_User_Pool_Log_Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+        - PolicyName: !Join
+            - ''
+            - - !Ref ResourceNamePrefix
+              - Lambda_Functions_Cognito_User_Pool_CreateUser_Policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminLinkProviderForUser
+                Resource: "*"
+      Tags:
+        - Key: Usage
+          Value: Youtube Streamer
+  awsTutorialPreSignUp:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Join
+        - ''
+        - - !Ref ResourceNamePrefix
+          - _PreSignUp
+      Description: Lambda function for PreSignUp
+      Architectures:
+        - arm64
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+            userName = event['userName']
+            triggerSource = event['triggerSource']
+          
+            print(f'presign: {event}')
+          
+            if userName.startswith('Steam_') and triggerSource == 'PreSignUp_SignUp':
+              raise Exception('Invalid username: Prefix "Steam_" is reserved for Steam authentication')
+          
+            return event
+      Handler: index.lambda_handler
+#      LoggingConfig:
+#        LogFormat: Text
+      MemorySize: 256
+      Role: !GetAtt awsTutorialCustomAuthLambdaRole.Arn
+      Runtime: python3.12
+      Timeout: 30
+      Tags:
+        -   Key: Usage
+            Value: Youtube Streamer
+  awsTutorialPreSignUpPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt awsTutorialPreSignUp.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt awsTutorialCognitoUserPool.Arn
   awsTutorialCognitoAuthRole:
     Type: AWS::IAM::Role
     Properties:
@@ -230,6 +377,8 @@ Resources:
         EmailSendingAccount: COGNITO_DEFAULT
       EnabledMfas:
         - SOFTWARE_TOKEN_MFA
+      LambdaConfig:
+        PreSignUp: !GetAtt awsTutorialPreSignUp.Arn
       MfaConfiguration: OPTIONAL
       Policies:
         PasswordPolicy:
@@ -258,8 +407,37 @@ Resources:
         Usage: Youtube Streamer
       VerificationMessageTemplate:
         DefaultEmailOption: CONFIRM_WITH_CODE
+  awsTutorialUserPoolSteamIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Properties:
+      AttributeMapping:
+        username: sub
+        preferred_username: name
+        custom:avatar: avatar
+      ProviderName: Steam
+      ProviderDetails:
+        client_id: !Ref SteamAPPId
+        client_secret: !Ref SteamAPIKey
+        authorize_scopes: "openid"
+        oidc_issuer: !Join
+          - ''
+          - - https://
+            - !GetAtt awsTutorialSteamOAuthStack.Outputs.awsTutorialSteamOAuthDNSName
+        attributes_request_method: "GET"
+      ProviderType: OIDC
+      UserPoolId: !Ref awsTutorialCognitoUserPool
+  awsTutorialCognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Select
+        - 2
+        - !Split
+          - '/'
+          - !Ref AWS::StackId
+      UserPoolId: !Ref awsTutorialCognitoUserPool
   awsTutorialCognitoUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
+    DependsOn: awsTutorialUserPoolSteamIdentityProvider
     Properties:
       ClientName: !Join
         - ''
@@ -273,18 +451,30 @@ Resources:
         IdToken: minutes
         RefreshToken: days
       AllowedOAuthFlows:
-        - client_credentials
-      AllowedOAuthFlowsUserPoolClient: false
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - profile
+        - aws.cognito.signin.user.admin
+      CallbackURLs:
+        - !Join
+          - ''
+          - - https://
+            - !GetAtt awsTutorialSteamOAuthStack.Outputs.awsTutorialSteamOAuthDNSName
+            - /callback
       AuthSessionValidity: 3
       EnablePropagateAdditionalUserContextData: false
       EnableTokenRevocation: true
       ExplicitAuthFlows:
+#       custom auth for steam
+#        - ALLOW_CUSTOM_AUTH
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
       GenerateSecret: true
       PreventUserExistenceErrors: ENABLED
       SupportedIdentityProviders:
-        - COGNITO
+        - Steam
       ReadAttributes:
         - preferred_username
         - email
@@ -344,3 +534,25 @@ Outputs:
     Value: !Ref awsTutorialLogGroup
     Export:
       Name: !Sub awsTutorialLogGroupName
+  awsTutorialUserPoolDomain:
+    Description: User Pool Domain
+    Value: !Join
+      - ''
+      - - !Select
+          - 2
+          - !Split
+            - '/'
+            - !Ref AWS::StackId
+        - '.auth.ap-northeast-2.amazoncognito.com'
+    Export:
+      Name: !Sub awsTutorialUserPoolDomain
+  awsTutorialSteamOAuthEC2InstanceIpAddress:
+    Description: The ip address of the Steam OAuth Server, add it to Whitelisted IPs of steam web api key management
+    Value: !GetAtt awsTutorialSteamOAuthStack.Outputs.SteamOAuthEC2InstanceIpAddress
+    Export:
+      Name: !Sub awsTutorialSteamOAuthEC2InstanceIpAddress
+  awsTutorialSteamOAuthHost:
+    Description: The DNSName of the Steam OAuth Server
+    Value: !GetAtt awsTutorialSteamOAuthStack.Outputs.awsTutorialSteamOAuthDNSName
+    Export:
+      Name: !Sub awsTutorialSteamOAuthHost

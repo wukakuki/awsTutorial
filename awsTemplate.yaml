@@ -11,6 +11,34 @@ Parameters:
             log  group, S3 resources.
         Type: String
         Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_UGC.yaml
+    SteamOAuthPartTemplateUrl:
+        Description: Url of the cloud formation template for steam oauth.
+        Type: String
+        Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_SteamOAuth.yaml
+    SteamOAuthEC2InstanceType:
+        Description: ec2 instance type of the steam oauth server
+        Type: String
+        Default: t4g.nano
+    AuthCodeValidity:
+        Description: auth code validity in seconds
+        Type: Number
+        Default: 300
+    DefaultTokenValidity:
+        Description: default token validity in seconds
+        Type: Number
+        Default: 3600
+    AccessTokenValidity:
+        Description: access token validity in seconds
+        Type: Number
+        Default: 3600
+    RefreshTokenValidity:
+        Description: refresh token validity in seconds
+        Type: Number
+        Default: 2592000
+    IdTokenValidity:
+        Description: id token validity in seconds
+        Type: Number
+        Default: 3600
     FriendSystemPartTemplateUrl:
         Description: Url of the cloud formation template for friend system.
         Type: String
@@ -208,6 +236,16 @@ Parameters:
         Description: Url of the cloud formation template for Matchmaking resources.
         Type: String
         Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_Matchmaking.yaml
+    SteamAPIKey:
+        Description: Steam API Key for authentication
+        Type: String
+    SteamAPPId:
+        Description: Steam App ID for authentication
+        Type: String
+    SteamIdentity:
+        Description: Steam Identity for authentication
+        Type: String
+        Default: 'awsTutorial'
 Conditions:
     ShouldDeployGameServer: !Equals
         - !Ref DeployGameServer
@@ -229,6 +267,16 @@ Resources:
             TemplateURL: !Ref UGCPartTemplateUrl
             Parameters:
                 ResourceNamePrefix: !Ref ResourceNamePrefix
+                SteamOAuthPartTemplateUrl: !Ref SteamOAuthPartTemplateUrl
+                SteamOAuthEC2InstanceType: !Ref SteamOAuthEC2InstanceType
+                SteamAPIKey: !Ref SteamAPIKey
+                SteamAPPId: !Ref SteamAPPId
+                SteamIdentity: !Ref SteamIdentity
+                AuthCodeValidity: !Ref AuthCodeValidity
+                DefaultTokenValidity: !Ref DefaultTokenValidity
+                AccessTokenValidity: !Ref AccessTokenValidity
+                RefreshTokenValidity: !Ref RefreshTokenValidity
+                IdTokenValidity: !Ref IdTokenValidity
             Tags:
                 -   Key: Usage
                     Value: Youtube Streamer
@@ -400,11 +448,20 @@ Outputs:
         Description: Cognito User Pool ID
         Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
     awsTutorialCognitoUserPoolClient:
-        Description: Link to Cognito User Pool Client
+        Description: Link to Cognito User Pool Client, copy client secret from this page
         Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cognito/v2/idp/user-pools/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId}/applications/app-clients/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId}/quick-setup-guide?region=${AWS::Region}"
+    awsTutorialCognitoUserPoolClientDomain:
+        Description: Cognito User Pool Client domain
+        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialUserPoolDomain
     awsTutorialCognitoUserPoolClientId:
         Description: Cognito User Pool Client ID
         Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+    awsTutorialSteamOAuthEC2InstanceIpAddress:
+        Description: The ip address of the Steam OAuth Server, add it to Whitelisted IPs of steam web api key management
+        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialSteamOAuthEC2InstanceIpAddress
+    awsTutorialSteamOAuthHost:
+        Description: The DNSName of the Steam OAuth Host
+        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialSteamOAuthHost
     awsTutorialAliasId:
         Condition: ShouldDeployGameServer
         Description: GameLift Alias ID

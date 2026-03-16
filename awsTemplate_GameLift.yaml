@@ -27,6 +27,11 @@ Parameters:
   PrometheusWorkspaceArn:
     Description: The Arn of the Prometheus workspace.
     Type: String
+Conditions:
+  UsePrometheus: !Not
+    - !Equals
+      - !Ref PrometheusWorkspaceArn
+      - ''
 Resources:
   awsTutorialGameLiftRole:
     Type: AWS::IAM::Role
@@ -102,6 +107,7 @@ Resources:
           Value: Youtube Streamer
   awsTutorialTelemetryMetricsPolicy:
     Type: AWS::IAM::RolePolicy
+    Condition: UsePrometheus
     Properties:
       PolicyName: !Join
         - ''

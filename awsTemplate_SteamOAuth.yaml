@@ -1,0 +1,560 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: awsTutorial(Steam OAuth part)
+Mappings:
+    AMIRegionMappings:
+        ap-south-1:
+            AMI: ami-0511523fc8f63741f
+        eu-north-1:
+            AMI: ami-0e85b09e1958d78b9
+        eu-west-3:
+            AMI: ami-0339ab347773aaf68
+        eu-west-2:
+            AMI: ami-09e423269403ddfb4
+        eu-west-1:
+            AMI: ami-09fd35b75f8449718
+        ap-northeast-3:
+            AMI: ami-004efd109c365160c
+        ap-northeast-2:
+            AMI: ami-034c030778a5fa97d
+        me-south-1:
+            AMI: ami-0bf25540e7308970c
+        ap-northeast-1:
+            AMI: ami-0e599f08080b1682b
+        ca-central-1:
+            AMI: ami-023ba0f83924be4aa
+        sa-east-1:
+            AMI: ami-0f979aa426143bea7
+        ap-east-1:
+            AMI: ami-02eea0fcb9cafb8bd
+        ap-southeast-1:
+            AMI: ami-09ceae9d0286a2d62
+        ap-southeast-2:
+            AMI: ami-051b9438444412b7c
+        eu-central-1:
+            AMI: ami-0acbcb5a28cbc5094
+        us-east-1:
+            AMI: ami-03f0dfac7906ade61
+        us-east-2:
+            AMI: ami-01eaca92d2058d5e8
+        us-west-1:
+            AMI: ami-04b3bb54ef4597b1d
+        us-west-2:
+            AMI: ami-0604014f7bafcaec3
+Parameters:
+    ResourceNamePrefix:
+        Description: Prefix of resource name
+        Default: awstutorial
+        Type: String
+    SteamOAuthEC2InstanceType:
+        Description: ec2 instance type of the steam oauth server
+        Type: String
+        Default: t4g.nano
+    SteamAPIKey:
+        Description: Steam API Key for authentication
+        Type: String
+    SteamAPPId:
+        Description: Steam App ID for authentication
+        Type: String
+    SteamIdentity:
+        Description: Steam Identity for authentication
+        Type: String
+        Default: 'awsTutorial'
+    AuthCodeValidity:
+        Description: auth code validity in seconds
+        Type: Number
+        Default: 300
+    DefaultTokenValidity:
+        Description: default token validity in seconds
+        Type: Number
+        Default: 3600
+    AccessTokenValidity:
+        Description: access token validity in seconds
+        Type: Number
+        Default: 3600
+    RefreshTokenValidity:
+        Description: refresh token validity in seconds
+        Type: Number
+        Default: 2592000
+    IdTokenValidity:
+        Description: id token validity in seconds
+        Type: Number
+        Default: 3600
+Resources:
+    awsTutorialSteamOAuthEC2VPC:
+        Type: AWS::EC2::VPC
+        Properties:
+            CidrBlock: 10.0.0.0/16
+            EnableDnsHostnames: true
+            EnableDnsSupport: true
+            InstanceTenancy: default
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthEC2Subnet:
+        Type: AWS::EC2::Subnet
+        Properties:
+            CidrBlock: 10.0.1.0/24
+            MapPublicIpOnLaunch: false
+            VpcId: !Ref awsTutorialSteamOAuthEC2VPC
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthEC2InternetGateway:
+        Type: AWS::EC2::InternetGateway
+        Properties:
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthEC2VPCGatewayAttachment:
+        Type: AWS::EC2::VPCGatewayAttachment
+        Properties:
+            InternetGatewayId: !Ref awsTutorialSteamOAuthEC2InternetGateway
+            VpcId: !Ref awsTutorialSteamOAuthEC2VPC
+    awsTutorialSteamOAuthEC2RouteTable:
+        Type: AWS::EC2::RouteTable
+        Properties:
+            VpcId: !Ref awsTutorialSteamOAuthEC2VPC
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthEC2Route:
+        Type: AWS::EC2::Route
+        Properties:
+            DestinationCidrBlock: 0.0.0.0/0
+            GatewayId: !Ref awsTutorialSteamOAuthEC2InternetGateway
+            RouteTableId: !Ref awsTutorialSteamOAuthEC2RouteTable
+    awsTutorialSteamOAuthEC2SubnetRouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref awsTutorialSteamOAuthEC2RouteTable
+            SubnetId: !Ref awsTutorialSteamOAuthEC2Subnet
+    awsTutorialSteamOAuthEC2InstanceSecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            GroupName: !Join
+                - ''
+                -   - !Ref ResourceNamePrefix
+                    - _Steam_OAuth_EC2_Instance_SG
+            GroupDescription: Security Group for Steam OAuth Server
+            VpcId: !Ref awsTutorialSteamOAuthEC2VPC
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthEC2InstanceSecurityGroupIngressFromELB:
+        Type: AWS::EC2::SecurityGroupIngress
+        Properties:
+            Description: Ingress from ELB
+            GroupId: !Ref awsTutorialSteamOAuthEC2InstanceSecurityGroup
+            IpProtocol: tcp
+            FromPort: 8000
+            ToPort: 8000
+            SourceSecurityGroupId: !Ref awsTutorialSteamOAuthELBSecurityGroup
+    awsTutorialSteamOAuthRole:
+        Type: AWS::IAM::Role
+        Properties:
+            RoleName: !Join
+                - ''
+                -   - !Ref ResourceNamePrefix
+                    - _Steam_OAuth_IAM_Role
+            Description: Role for ws mmo
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    -   Effect: Allow
+                        Principal:
+                            Service:
+                                - ec2.amazonaws.com
+                        Action:
+                            - sts:AssumeRole
+            ManagedPolicyArns:
+                - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthIAMInstanceProfile:
+        Type: AWS::IAM::InstanceProfile
+        Properties:
+            InstanceProfileName: !Join
+                - ''
+                -   - !Ref ResourceNamePrefix
+                    - _Steam_OAuth_IAM_InstanceProfile
+            Path: '/'
+            Roles:
+                - !Ref awsTutorialSteamOAuthRole
+    awsTutorialSteamOAuthEC2LaunchTemplate:
+        Type: AWS::EC2::LaunchTemplate
+        Properties:
+            LaunchTemplateName: !Join
+                - ''
+                -   - !Ref ResourceNamePrefix
+                    - _Steam_OAuth_EC2_LaunchTemplate
+            LaunchTemplateData:
+                #        InstanceMarketOptions:
+                #          MarketType: capacity-block
+                #          SpotOptions:
+                #            InstanceInterruptionBehavior: stop
+                #            SpotInstanceType: persistent
+                InstanceType: !Ref SteamOAuthEC2InstanceType
+                IamInstanceProfile:
+                    Arn: !GetAtt awsTutorialSteamOAuthIAMInstanceProfile.Arn
+                ImageId: !FindInMap
+                    - AMIRegionMappings
+                    - !Ref AWS::Region
+                    - AMI
+                #        {
+                #          "steam_app_id": "",
+                #          "steam_web_api_key": "",
+                #          "steam_identity": "awsTutorial",
+                #          "auth_code_validity": 300,
+                #          "default_token_validity": 3600,
+                #          "access_token_validity": 3600,
+                #          "refresh_token_validity": 2592000,
+                #          "id_token_validity": 3600,
+                #        }
+                UserData: !Base64
+                    Fn::Sub: |
+                        {
+                          "steam_app_id": "${SteamAPPId}",
+                          "steam_web_api_key": "${SteamAPIKey}",
+                          "steam_identity": "${SteamIdentity}",
+                          "auth_code_validity": ${AuthCodeValidity},
+                          "default_token_validity": ${DefaultTokenValidity},
+                          "access_token_validity": ${AccessTokenValidity},
+                          "refresh_token_validity": ${RefreshTokenValidity},
+                          "id_token_validity": ${IdTokenValidity}
+                        }
+                TagSpecifications:
+                    -   ResourceType: instance
+                        Tags:
+                            -   Key: Usage
+                                Value: Youtube Streamer
+                    -   ResourceType: volume
+                        Tags:
+                            -   Key: Usage
+                                Value: Youtube Streamer
+                    -   ResourceType: network-interface
+                        Tags:
+                            -   Key: Usage
+                                Value: Youtube Streamer
+    #          - ResourceType: spot-instances-request
+    #            Tags:
+    #              - Key: Usage
+    #                Value: Youtube Streamer
+    awsTutorialSteamOAuthEC2Instance:
+        Type: AWS::EC2::Instance
+        Properties:
+            LaunchTemplate:
+                LaunchTemplateId: !Ref awsTutorialSteamOAuthEC2LaunchTemplate
+                Version: !GetAtt awsTutorialSteamOAuthEC2LaunchTemplate.DefaultVersionNumber
+            NetworkInterfaces:
+                -   AssociatePublicIpAddress: true
+                    DeleteOnTermination: true
+                    DeviceIndex: '0'
+                    GroupSet:
+                        - !Ref awsTutorialSteamOAuthEC2InstanceSecurityGroup
+                    SubnetId: !Ref awsTutorialSteamOAuthEC2Subnet
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthELBSecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            GroupName: !Join
+                - ''
+                -   - !Ref ResourceNamePrefix
+                    - _Steam_OAuth_ELB_SG
+            GroupDescription: Security Group for Steam OAuth Server
+            VpcId: !Ref awsTutorialSteamOAuthEC2VPC
+            SecurityGroupIngress:
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.88.0/21
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.239.134.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 52.82.134.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.86.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.140.0/22
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.0.0/18
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.239.204.0/22
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.160.0/19
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 70.132.0.0/18
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 15.158.0.0/16
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.136.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.239.170.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 52.46.0.0/22
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.96.0/19
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.184.0/22
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 204.246.166.0/24
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.64.0/21
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.172.0/22
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 205.251.218.0/24
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 52.46.4.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.144.0/20
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.176.0/21
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.78.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.248.0/22
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 64.252.128.0/18
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.154.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 64.252.64.0/18
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.144.0/21
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.224.0/21
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.128.0/21
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 52.46.32.0/19
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 3.172.64.0/18
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 52.82.128.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 18.68.0.0/16
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.156.0/22
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.160.0/21
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.240.0/21
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.192.0/19
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.76.0/24
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 52.46.16.0/20
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.239.208.0/21
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.188.0/23
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 3.172.0.0/18
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.80.0/22
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 54.182.128.0/20
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 130.176.72.0/22
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 13.124.199.0/24
+                -   IpProtocol: tcp
+                    FromPort: 80
+                    ToPort: 80
+                    CidrIp: 3.29.57.0/26
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthELB:
+        Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+        Properties:
+            Name: !Join
+                - ''
+                -   - !Ref ResourceNamePrefix
+                    - '-Steam-OAuth-ELB'
+            Type: network
+            Scheme: internet-facing
+            Subnets:
+                - !Ref awsTutorialSteamOAuthEC2Subnet
+            SecurityGroups:
+                - !Ref awsTutorialSteamOAuthELBSecurityGroup
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthELBTargetGroup:
+        Type: AWS::ElasticLoadBalancingV2::TargetGroup
+        Properties:
+            Name: !Join
+                - ''
+                -   - !Ref ResourceNamePrefix
+                    - '-Steam-OAuth-ELB-TG'
+            HealthCheckPath: /health
+            HealthCheckPort: 8000
+            HealthCheckProtocol: HTTP
+            Protocol: TCP
+            Port: 8000
+            VpcId: !Ref awsTutorialSteamOAuthEC2VPC
+            TargetType: instance
+            Targets:
+                -   Id: !Ref awsTutorialSteamOAuthEC2Instance
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialSteamOAuthELBListener:
+        Type: AWS::ElasticLoadBalancingV2::Listener
+        Properties:
+            LoadBalancerArn: !Ref awsTutorialSteamOAuthELB
+            Protocol: TCP
+            Port: 80
+            DefaultActions:
+                -   Type: forward
+                    TargetGroupArn: !Ref awsTutorialSteamOAuthELBTargetGroup
+    awsTutorialSteamOAuthCloudFrontDistribution:
+        Type: AWS::CloudFront::Distribution
+        Properties:
+            DistributionConfig:
+                DefaultCacheBehavior:
+                    TargetOriginId: !Join
+                        - ''
+                        -   - !Ref ResourceNamePrefix
+                            - _Steam_OAuth_CLoudFront_Distribution_ELB_Origin
+                    AllowedMethods:
+                        - GET
+                        - HEAD
+                        - POST
+                        #            belows for AllowedMethods must be [HEAD, GET] or [HEAD, GET, OPTIONS] or [HEAD, DELETE, POST, GET, OPTIONS, PUT, PATCH]
+                        - OPTIONS
+                        - PUT
+                        - PATCH
+                        - DELETE
+                    CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # caching disabled
+                    ForwardedValues:
+                        Headers:
+                            - Authorization
+                        QueryString: true
+                    OriginRequestPolicyId: 33f36d7e-f396-46d9-90e0-52428a34d9dc # all viewer and cloud front headers
+                    ViewerProtocolPolicy: redirect-to-https
+                Enabled: true
+                HttpVersion: http2and3
+                Origins:
+                    -   Id: !Join
+                            - ''
+                            -   - !Ref ResourceNamePrefix
+                                - _Steam_OAuth_CLoudFront_Distribution_ELB_Origin
+                        DomainName: !GetAtt awsTutorialSteamOAuthELB.DNSName
+                        CustomOriginConfig:
+                            HTTPPort: 80
+                            OriginProtocolPolicy: http-only
+                ViewerCertificate:
+                    CloudFrontDefaultCertificate: true
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+Outputs:
+    awsTutorialSteamOAuthDNSName:
+        Description: The DNSName of the Steam OAuth Server
+        Value: !GetAtt awsTutorialSteamOAuthCloudFrontDistribution.DomainName
+        Export:
+            Name: !Sub awsTutorialSteamOAuthDNSName
+    SteamOAuthEC2InstanceIpAddress:
+        Description: The ip address of the Steam OAuth Server, add it to Whitelisted IPs of steam web api key management
+        Value: !GetAtt awsTutorialSteamOAuthEC2Instance.PublicIp
+        Export:
+            Name: !Sub SteamOAuthEC2InstanceIpAddress
