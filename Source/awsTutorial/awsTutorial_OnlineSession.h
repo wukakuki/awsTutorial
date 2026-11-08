@@ -9,6 +9,7 @@
 #include "awsTutorial_GameInstance.h"
 
 #include <GameFramework/OnlineSession.h>
+#include <Engine/NetDriver.h>
 
 #include "awsTutorial_OnlineSession.generated.h"
 

@@ -9,8 +9,8 @@ public class awsTutorialEditorTarget : TargetRules
 	{
 		Type = TargetType.Editor;
 		bValidateFormatStrings = true;
-		DefaultBuildSettings = BuildSettingsVersion.V5;
-		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_4;
+		DefaultBuildSettings = BuildSettingsVersion.V6;
+		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
 		ExtraModuleNames.Add("awsTutorial");
 	}
 }

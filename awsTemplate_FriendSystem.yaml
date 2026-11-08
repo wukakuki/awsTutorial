@@ -271,7 +271,7 @@ Resources:
       Tags:
         - Key: Usage
           Value: Youtube Streamer
-  # add DAX if you want but it will charge you per hours. Only add it when you are at the corner of releasing your game.
+  # add DAX if you want, but it will charge you per hours. Only add it when you are at the corner of releasing your game.
   awsTutorialFriendListLambdaFunctionRole:
     Type: AWS::IAM::Role
     Properties:

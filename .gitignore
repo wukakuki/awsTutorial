@@ -23,3 +23,5 @@ PackExampleProject.sh
 locations.txt
 CopyAMI.sh
 PublicAMI.sh
+/Android_ASTC
+ClearAMI.sh

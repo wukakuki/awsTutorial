@@ -6,11 +6,23 @@ Parameters:
         Description: Prefix of resource name
         Default: awstutorial
         Type: String
+    UGCWithSteamPartTemplateUrl:
+        Description: Url of the cloud formation template for cognito, cloudwatch
+            log  group, S3 resources.
+        Type: String
+        Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_UGC_Steam.yaml
     UGCPartTemplateUrl:
         Description: Url of the cloud formation template for cognito, cloudwatch
             log  group, S3 resources.
         Type: String
         Default: https://aws-plugin-public-resource.s3.ap-northeast-2.amazonaws.com/cloudformation+templates/awsTemplate_UGC.yaml
+    UseSteamOAuth:
+        Description: use steam oauth?
+        Type: String
+        Default: 'false'
+        AllowedValues:
+            - 'true'
+            - 'false'
     SteamOAuthPartTemplateUrl:
         Description: Url of the cloud formation template for steam oauth.
         Type: String
@@ -247,6 +259,12 @@ Parameters:
         Type: String
         Default: 'awsTutorial'
 Conditions:
+    ShouldUseSteamOAuth: !Equals
+        - !Ref UseSteamOAuth
+        - 'true'
+    ShouldNotUseSteamOAuth: !Equals
+        - !Ref UseSteamOAuth
+        - 'false'
     ShouldDeployGameServer: !Equals
         - !Ref DeployGameServer
         - 'true'
@@ -261,10 +279,11 @@ Conditions:
         - !Not
             - !Condition ShouldDeployGameServer
 Resources:
-    awsTutorialUGCStack:
+    awsTutorialUGCStackSteam:
         Type: AWS::CloudFormation::Stack
+        Condition: ShouldUseSteamOAuth
         Properties:
-            TemplateURL: !Ref UGCPartTemplateUrl
+            TemplateURL: !Ref UGCWithSteamPartTemplateUrl
             Parameters:
                 ResourceNamePrefix: !Ref ResourceNamePrefix
                 SteamOAuthPartTemplateUrl: !Ref SteamOAuthPartTemplateUrl
@@ -277,6 +296,16 @@ Resources:
                 AccessTokenValidity: !Ref AccessTokenValidity
                 RefreshTokenValidity: !Ref RefreshTokenValidity
                 IdTokenValidity: !Ref IdTokenValidity
+            Tags:
+                -   Key: Usage
+                    Value: Youtube Streamer
+    awsTutorialUGCStack:
+        Type: AWS::CloudFormation::Stack
+        Condition: ShouldNotUseSteamOAuth
+        Properties:
+            TemplateURL: !Ref UGCPartTemplateUrl
+            Parameters:
+                ResourceNamePrefix: !Ref ResourceNamePrefix
             Tags:
                 -   Key: Usage
                     Value: Youtube Streamer
@@ -307,9 +336,18 @@ Resources:
             TemplateURL: !Ref MatchmakingPartTemplateUrl
             Parameters:
                 ResourceNamePrefix: !Ref ResourceNamePrefix
-                CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-                CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
-                CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+                CognitoUserPool: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolId
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+                CognitoUserPoolArn: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolArn
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+                CognitoUserPoolClient: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolClientId
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
                 GameLiftGameSessionQueueArn: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueArn
                 GameLiftFleetInstanceRoleName: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialFleetInstanceRoleName
                 WeaponIndex: !Ref WeaponIndex
@@ -323,9 +361,18 @@ Resources:
             TemplateURL: !Ref FriendSystemPartTemplateUrl
             Parameters:
                 ResourceNamePrefix: !Ref ResourceNamePrefix
-                CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-                CognitoUserPoolArn: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
-                CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+                CognitoUserPool: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolId
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+                CognitoUserPoolArn: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolArn
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolArn
+                CognitoUserPoolClient: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolClientId
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
             Tags:
                 -   Key: Usage
                     Value: Youtube Streamer
@@ -339,8 +386,14 @@ Resources:
             Parameters:
                 ResourceNamePrefix: !Ref ResourceNamePrefix
                 GameServerDeployed: !Ref DeployGameServer
-                CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-                CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+                CognitoUserPool: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolId
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+                CognitoUserPoolClient: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolClientId
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
                 JwksUpdateInterval: !Ref JwksUpdateInterval
                 PositionUpdateInterval: !Ref PositionUpdateInterval
                 WeaponUpdateInterval: !Ref WeaponUpdateInterval
@@ -386,15 +439,19 @@ Resources:
     awsTutorialWebSocketMMOStackWithoutGameServer:
         Type: AWS::CloudFormation::Stack
         Condition: ShouldDeployWebSocketMMOWithoutGameServer
-        DependsOn:
-            - awsTutorialUGCStack
         Properties:
             TemplateURL: !Ref WebSocketMMOPartTemplateUrl
             Parameters:
                 ResourceNamePrefix: !Ref ResourceNamePrefix
                 GameServerDeployed: !Ref DeployGameServer
-                CognitoUserPool: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
-                CognitoUserPoolClient: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+                CognitoUserPool: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolId
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+                CognitoUserPoolClient: !If
+                    - ShouldUseSteamOAuth
+                    - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolClientId
+                    - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
                 JwksUpdateInterval: !Ref JwksUpdateInterval
                 PositionUpdateInterval: !Ref PositionUpdateInterval
                 WeaponUpdateInterval: !Ref WeaponUpdateInterval
@@ -443,25 +500,46 @@ Outputs:
         Value: !Ref AWS::Region
     awsTutorialCognitoIdentityPoolId:
         Description: Cognito Identity Pool ID
-        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoIdentityPoolId
+        Value: !If
+            - ShouldUseSteamOAuth
+            - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoIdentityPoolId
+            - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoIdentityPoolId
     awsTutorialCognitoUserPoolId:
         Description: Cognito User Pool ID
-        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
+        Value: !If
+            - ShouldUseSteamOAuth
+            - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolId
+            - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId
     awsTutorialCognitoUserPoolClient:
         Description: Link to Cognito User Pool Client, copy client secret from this page
-        Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cognito/v2/idp/user-pools/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId}/applications/app-clients/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId}/quick-setup-guide?region=${AWS::Region}"
+        Value: !If
+            - ShouldUseSteamOAuth
+            - !Sub "https://${AWS::Region}.console.aws.amazon.com/cognito/v2/idp/user-pools/${awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolId}/applications/app-clients/${awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolClientId}/quick-setup-guide?region=${AWS::Region}"
+            - !Sub "https://${AWS::Region}.console.aws.amazon.com/cognito/v2/idp/user-pools/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolId}/applications/app-clients/${awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId}/quick-setup-guide?region=${AWS::Region}"
     awsTutorialCognitoUserPoolClientDomain:
         Description: Cognito User Pool Client domain
-        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialUserPoolDomain
+        Value: !If
+            - ShouldUseSteamOAuth
+            - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialUserPoolDomain
+            - ''
     awsTutorialCognitoUserPoolClientId:
         Description: Cognito User Pool Client ID
-        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
+        Value: !If
+            - ShouldUseSteamOAuth
+            - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialCognitoUserPoolClientId
+            - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialCognitoUserPoolClientId
     awsTutorialSteamOAuthEC2InstanceIpAddress:
         Description: The ip address of the Steam OAuth Server, add it to Whitelisted IPs of steam web api key management
-        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialSteamOAuthEC2InstanceIpAddress
+        Value: !If
+            - ShouldUseSteamOAuth
+            - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialSteamOAuthEC2InstanceIpAddress
+            - ''
     awsTutorialSteamOAuthHost:
         Description: The DNSName of the Steam OAuth Host
-        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialSteamOAuthHost
+        Value: !If
+            - ShouldUseSteamOAuth
+            - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialSteamOAuthHost
+            - ''
     awsTutorialAliasId:
         Condition: ShouldDeployGameServer
         Description: GameLift Alias ID
@@ -472,10 +550,16 @@ Outputs:
         Value: !GetAtt awsTutorialGameLiftStack.Outputs.awsTutorialGameSessionQueueName
     awsTutorialUserGeneratedContentS3Bucket:
         Description: User Generated Content S3 Bucket
-        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialUserGeneratedContentS3Bucket
+        Value: !If
+            - ShouldUseSteamOAuth
+            - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialUserGeneratedContentS3Bucket
+            - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialUserGeneratedContentS3Bucket
     awsTutorialLogGroupName:
         Description: Log Group Name
-        Value: !GetAtt awsTutorialUGCStack.Outputs.awsTutorialLogGroupName
+        Value: !If
+            - ShouldUseSteamOAuth
+            - !GetAtt awsTutorialUGCStackSteam.Outputs.awsTutorialLogGroupName
+            - !GetAtt awsTutorialUGCStack.Outputs.awsTutorialLogGroupName
     awsTutorialFriendSystemGraphQLHost:
         Description: Friend System GraphQL Host
         Value: !GetAtt awsTutorialFriendSystemStack.Outputs.awsTutorialFriendSystemGraphQLHost
